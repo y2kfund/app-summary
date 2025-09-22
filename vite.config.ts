@@ -9,7 +9,7 @@ export default defineConfig(({ mode }) => {
       build: {
         outDir: 'dist',
         lib: {
-          entry: './src/index.ts',
+          entry: './src/main.ts',
           name: 'Positions',
           formats: ['es'],
           fileName: 'index'

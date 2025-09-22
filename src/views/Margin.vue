@@ -5,7 +5,7 @@ import { useNlvMarginQuery, type nlvMargin } from '@y2kfund/core/nlvMargin'
 const q = useNlvMarginQuery(10000)
 
 // New state to manage the visibility of the breakdown for each client
-const breakdownVisibility = reactive({});
+const breakdownVisibility: { [key: number]: boolean } = reactive({});
 
 // Helper function to format numbers as currency
 function formatCurrency(value: number | null | undefined): string {
@@ -78,7 +78,7 @@ const allAccountsSummary = computed(() => {
 });
 
 // Function to toggle the breakdown section visibility
-function toggleBreakdown(clientId) {
+function toggleBreakdown(clientId: number) {
   breakdownVisibility[clientId] = !breakdownVisibility[clientId];
 }
 </script>
