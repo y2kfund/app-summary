@@ -11,15 +11,15 @@
   "bugs": {
     "url": "https://github.com/y2kfund/app-margin/issues"
   },
-  "main": "./dist/margin.umd.cjs",
-  "module": "./dist/margin.js",
+  "main": "./dist/index.es.js",
+  "module": "./dist/index.es.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/margin.js",
-      "require": "./dist/margin.umd.cjs",
+      "import": "./dist/index.es.js",
       "types": "./dist/index.d.ts"
-    }
+    },
+    "./dist/style.css": "./dist/style.css"
   },
   "files": [
     "dist"

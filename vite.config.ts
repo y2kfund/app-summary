@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => {
         outDir: 'dist',
         lib: {
           entry: './src/main.ts',
-          name: 'Positions',
+          name: 'Margin',
           formats: ['es'],
           fileName: 'index'
         },
@@ -34,12 +34,6 @@ export default defineConfig(({ mode }) => {
       port: 5101,
       open: true 
     },
-    root: '.',
-    // Use dev harness as the default entry point
-    build: {
-      rollupOptions: {
-        input: './index.html'
-      }
-    }
+    root: '.'
   }
 })
