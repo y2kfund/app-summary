@@ -5,11 +5,14 @@ import dts from 'vite-plugin-dts'
 export default defineConfig(({ mode }) => {
   if (mode === 'lib') {
     return {
-      plugins: [vue(), dts()],
+      plugins: [vue(), dts({
+        entryRoot: 'src',
+        outDir: 'dist',
+      })],
       build: {
         outDir: 'dist',
         lib: {
-          entry: './src/main.ts',
+          entry: './src/index.ts',
           name: 'Margin',
           formats: ['es'],
           fileName: 'index'
