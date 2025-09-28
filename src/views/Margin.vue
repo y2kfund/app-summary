@@ -81,6 +81,11 @@ const allAccountsSummary = computed(() => {
 function toggleBreakdown(clientId: number) {
   breakdownVisibility[clientId] = !breakdownVisibility[clientId];
 }
+function updateClientInRoute(userAccountId: number) {
+  const url = new URL(window.location.href);
+  url.searchParams.set('all_cts_clientId', 'Client ' + userAccountId.toString());
+  window.history.replaceState({}, '', url.toString());
+}
 </script>
 
 <template>
@@ -130,7 +135,7 @@ function toggleBreakdown(clientId: number) {
           class="metric-row"
         >
           <div class="row-header-button-container">
-            <div class="row-header">Client{{ index + 1 }}</div>
+            <div class="row-header" @click="updateClientInRoute(item.nlv_internal_account_id)">Client{{ index + 1 }}</div>
             <button 
               :class="['row-status', item.addlGmvAllowedNlvSide < 0 && item.addlGmvAllowedMaintenanceSide < 0 ? 'stage-2-exhausted' : (item.addlGmvAllowedNlvSide < 0 ? 'stage-1-exhausted' : 'ok')]"
               @click="toggleBreakdown(item.nlv_id)"
