@@ -94,6 +94,19 @@ function updateClientInRoute(userAccountId: number) {
     accountId: userAccountId
   });
 }
+
+// Add this new function to clear the client filter
+function showAllAccounts() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete('all_cts_clientId');
+  window.history.replaceState({}, '', url.toString());
+  
+  // Emit via event bus to clear the filter
+  eventBus?.emit('client-id-changed', {
+    clientId: null,
+    accountId: null
+  });
+}
 </script>
 
 <template>
@@ -119,7 +132,7 @@ function updateClientInRoute(userAccountId: number) {
           v-if="allAccountsSummary" 
           class="metric-row all-accounts-row"
         >
-          <div class="row-header">All Accounts ({{ q.data.value?.length || 0 }})</div>
+          <div class="row-header" @click="showAllAccounts">All Accounts ({{ q.data.value?.length || 0 }})</div>
           <div class="row-content">
             <div class="metric-column">
               <div class="metric-label">Net liquidation value</div>
@@ -299,6 +312,7 @@ function updateClientInRoute(userAccountId: number) {
   font-weight: 600;
   color: #1f2a37;
   margin: 0;
+  cursor: pointer; /* Add this line */
 }
 
 /* Updated grid layout for content */
