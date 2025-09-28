@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, computed, reactive } from 'vue'
+import { onBeforeUnmount, computed, reactive, inject } from 'vue'
 import { useNlvMarginQuery, type nlvMargin } from '@y2kfund/core/nlvMargin'
 
 const q = useNlvMarginQuery(10000)
@@ -81,10 +81,18 @@ const allAccountsSummary = computed(() => {
 function toggleBreakdown(clientId: number) {
   breakdownVisibility[clientId] = !breakdownVisibility[clientId];
 }
+const eventBus = inject('eventBus');
+
 function updateClientInRoute(userAccountId: number) {
   const url = new URL(window.location.href);
   url.searchParams.set('all_cts_clientId', 'Client ' + userAccountId.toString());
   window.history.replaceState({}, '', url.toString());
+  
+  // Emit via event bus
+  eventBus?.emit('client-id-changed', {
+    clientId: 'Client ' + userAccountId.toString(),
+    accountId: userAccountId
+  });
 }
 </script>
 
