@@ -3,7 +3,8 @@ Other components in their package.json when they reference app-margin the code i
 
 # How to create a new dist folder?
 ```
-> npm run build
-this will change the dist folder and then
+> npm run build:lib
+this will change the dist folder 
+if you run > npm run build then it will give an error with entrypoint
 > git commit
 ```
