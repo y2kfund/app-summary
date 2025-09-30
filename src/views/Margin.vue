@@ -381,7 +381,7 @@ onBeforeUnmount(() => {
     <div v-else-if="q.isSuccess.value">
       <div class="metric-block">
         <div class="block-header">
-          <h2>Summary</h2>
+          <h2><router-link to="/margin" class="summary-link">Summary</router-link></h2>
         </div>
 
         <!-- All Accounts Row -->
@@ -795,5 +795,16 @@ onBeforeUnmount(() => {
   font-style: italic;
   font-size: 0.9rem;
   color: #4b5563;
+}
+
+.summary-link {
+  color: #1f2a37;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.summary-link:hover {
+  color: #3b82f6;
+  text-decoration: underline;
 }
 </style>
