@@ -24,15 +24,25 @@
   "files": [
     "dist"
   ],
+  "_devNotes": {
+    "npm run dev": "uses local package from ../app-core",
+    "npm run build": "uses package from Git repository for app-core",
+    "dependencies": "The dependencies below are PRODUCTION versions. These are used when npm install is run by cloudflare"
+  },
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "build:lib": "vite build --mode lib",
+    "dev": "npm run deps:dev && vite",
+    "build": "npm run deps:prod && vite build",
+    "build:lib": "npm run deps:prod && vite build --mode lib",
     "prepublishOnly": "pnpm run build:lib",
-    "preview": "vite preview --port 5173"
+    "preview": "vite preview --port 5173",
+    "_comment": "deps:dev installs local package temporarily (--no-save), deps:prod ensures Git repo is used",
+    "deps:dev": "npm install @y2kfund/core@file:../app-core --no-save",
+    "deps:prod": "npm install @y2kfund/core@git+https://github.com/y2kfund/app-core.git --no-save"
   },
   "dependencies": {
+    "chart.js": "^4.5.0",
     "vue": "^3.4.0",
+    "vue-chartjs": "^5.3.2",
     "vue-router": "^4.3.2"
   },
   "peerDependencies": {

@@ -1,11 +1,99 @@
 <script setup lang="ts">
-import { onBeforeUnmount, computed, reactive, inject } from 'vue'
+import { onBeforeUnmount, computed, reactive, inject, ref } from 'vue'
 import { useNlvMarginQuery, type nlvMargin } from '@y2kfund/core/nlvMargin'
+import { useQuery, useQueryClient } from '@tanstack/vue-query'
+import { useSupabase } from '@y2kfund/core'
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js'
+import { Line } from 'vue-chartjs'
+
+// Register Chart.js components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+)
 
 const q = useNlvMarginQuery(10000)
 
 // New state to manage the visibility of the breakdown for each client
 const breakdownVisibility: { [key: number]: boolean } = reactive({});
+
+// State for graph visibility and selected account
+const graphVisibility: { [key: number]: { nlv: boolean; mm: boolean } } = reactive({});
+const selectedAccountForHistory = ref<number | null>(null)
+const selectedGraphType = ref<'nlv' | 'mm' | null>(null)
+
+// Historical data query - directly in component
+const supabase = useSupabase()
+
+// NLV History Query
+const nlvHistoryQuery = useQuery({
+  queryKey: computed(() => ['nlvHistory', selectedAccountForHistory.value]),
+  queryFn: async () => {
+    if (!selectedAccountForHistory.value) return []
+    
+    console.log('🔍 Querying NLV history for account:', selectedAccountForHistory.value)
+    
+    const { data, error } = await supabase
+      .schema('hf')
+      .from('netliquidation')
+      .select('internal_account_id, fetched_at, nlv')
+      .eq('internal_account_id', selectedAccountForHistory.value)
+      .gte('fetched_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+      .order('fetched_at', { ascending: true })
+
+    if (error) {
+      console.error('❌ NLV history query error:', error)
+      throw error
+    }
+
+    console.log('✅ NLV history query success:', data?.length, 'records')
+    return data || []
+  },
+  staleTime: 60_000,
+  enabled: computed(() => !!selectedAccountForHistory.value && selectedGraphType.value === 'nlv')
+})
+
+// Maintenance Margin History Query
+const maintenanceHistoryQuery = useQuery({
+  queryKey: computed(() => ['maintenanceHistory', selectedAccountForHistory.value]),
+  queryFn: async () => {
+    if (!selectedAccountForHistory.value) return []
+    
+    console.log('🔍 Querying Maintenance Margin history for account:', selectedAccountForHistory.value)
+    
+    const { data, error } = await supabase
+      .schema('hf')
+      .from('maintenance_margin')
+      .select('internal_account_id, fetched_at, maintenance')
+      .eq('internal_account_id', selectedAccountForHistory.value)
+      .gte('fetched_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+      .order('fetched_at', { ascending: true })
+
+    if (error) {
+      console.error('❌ Maintenance Margin history query error:', error)
+      throw error
+    }
+
+    console.log('✅ Maintenance Margin history query success:', data?.length, 'records')
+    return data || []
+  },
+  staleTime: 60_000,
+  enabled: computed(() => !!selectedAccountForHistory.value && selectedGraphType.value === 'mm')
+})
 
 // Helper function to format numbers as currency
 function formatCurrency(value: number | null | undefined): string {
@@ -18,16 +106,125 @@ function formatCurrency(value: number | null | undefined): string {
   }).format(value)
 }
 
-// Ensure the cleanup function is called when the component is unmounted
-onBeforeUnmount(() => {
-  if (q._cleanup) {
-    q._cleanup()
+// Function to toggle graph visibility
+function toggleGraph(accountId: number, type: 'nlv' | 'mm') {
+  console.log('🔄 Toggle graph called:', { accountId, type })
+  
+  if (!graphVisibility[accountId]) {
+    graphVisibility[accountId] = { nlv: false, mm: false }
+  }
+  
+  const wasVisible = graphVisibility[accountId][type]
+  
+  // Close all other graphs first
+  Object.keys(graphVisibility).forEach(id => {
+    const numId = parseInt(id)
+    if (graphVisibility[numId]) {
+      graphVisibility[numId].nlv = false
+      graphVisibility[numId].mm = false
+    }
+  })
+  
+  // Toggle the clicked graph
+  graphVisibility[accountId][type] = !wasVisible
+  
+  // Set the selected account and graph type for history query
+  if (graphVisibility[accountId][type]) {
+    console.log('📊 Setting selected account for history:', accountId, 'type:', type)
+    selectedAccountForHistory.value = accountId
+    selectedGraphType.value = type
+  } else {
+    console.log('❌ Clearing selected account for history')
+    selectedAccountForHistory.value = null
+    selectedGraphType.value = null
+  }
+  
+  console.log('📈 Graph visibility state:', graphVisibility)
+  console.log('🎯 Selected account for history:', selectedAccountForHistory.value, 'type:', selectedGraphType.value)
+}
+
+// Get the appropriate query based on selected type
+const currentHistoryQuery = computed(() => {
+  if (selectedGraphType.value === 'nlv') {
+    return nlvHistoryQuery
+  } else if (selectedGraphType.value === 'mm') {
+    return maintenanceHistoryQuery
+  }
+  return null
+})
+
+// Chart.js data and options
+const chartData = computed(() => {
+  const query = currentHistoryQuery.value
+  if (!query?.data.value?.length) return null
+  
+  const data = query.data.value
+  const labels = data.map(item => new Date(item.fetched_at).toLocaleDateString())
+  
+  const isNlv = selectedGraphType.value === 'nlv'
+  const values = data.map(item => isNlv ? item.nlv : item.maintenance)
+  
+  return {
+    labels,
+    datasets: [
+      {
+        label: isNlv ? 'Net Liquidation Value' : 'Maintenance Margin',
+        data: values,
+        borderColor: isNlv ? '#3b82f6' : '#f59e0b',
+        backgroundColor: isNlv ? 'rgba(59, 130, 246, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+        borderWidth: 3,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        tension: 0.1,
+        fill: true
+      }
+    ]
   }
 })
 
+const chartOptions = computed(() => ({
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: {
+      display: true,
+      position: 'top' as const
+    },
+    title: {
+      display: false
+    },
+    tooltip: {
+      callbacks: {
+        label: function(context: any) {
+          return formatCurrency(context.parsed.y)
+        }
+      }
+    }
+  },
+  scales: {
+    x: {
+      display: true,
+      title: {
+        display: true,
+        text: 'Date'
+      }
+    },
+    y: {
+      display: true,
+      title: {
+        display: true,
+        text: 'Value'
+      },
+      ticks: {
+        callback: function(value: any) {
+          return formatCurrency(value)
+        }
+      }
+    }
+  }
+}))
 
 function calculateGmax(nlv: number, maintenance_margin_caled_m: number, drop_called_d: number): number {
-  //console.log(nlv / (1 - (1 - drop_called_d) * (1 - maintenance_margin_caled_m)));
   const part1 = 1 - drop_called_d;
   const part2 = 1 - maintenance_margin_caled_m;
   const part3 = part1 * part2;
@@ -60,12 +257,12 @@ const calculatedMetrics = computed(() => {
     };
   });
 });
+
 const allAccountsSummary = computed(() => {
   if (!calculatedMetrics.value) return null;
   const totalNlv = calculatedMetrics.value.reduce((sum, item) => sum + (item.nlv_val || 0), 0);
   const totalMaintenance = calculatedMetrics.value.reduce((sum, item) => sum + (item.maintenance_val || 0), 0);
   
-  // These values are hardcoded for demonstration as they are not in the provided data structure.
   const totalAddlGmvToStopReducing = calculatedMetrics.value.reduce((sum, item) => sum + (item.addlGmvAllowedNlvSide || 0), 0); 
   const totalAddlGmvToStartReducing = calculatedMetrics.value.reduce((sum, item) => sum + (item.addlGmvAllowedMaintenanceSide || 0), 0); 
 
@@ -77,10 +274,10 @@ const allAccountsSummary = computed(() => {
   };
 });
 
-// Function to toggle the breakdown section visibility
 function toggleBreakdown(clientId: number) {
   breakdownVisibility[clientId] = !breakdownVisibility[clientId];
 }
+
 const eventBus = inject('eventBus');
 
 function updateClientInRoute(userAccountId: number) {
@@ -88,25 +285,29 @@ function updateClientInRoute(userAccountId: number) {
   url.searchParams.set('all_cts_clientId', 'Client ' + userAccountId.toString());
   window.history.replaceState({}, '', url.toString());
   
-  // Emit via event bus
   eventBus?.emit('client-id-changed', {
     clientId: 'Client ' + userAccountId.toString(),
     accountId: userAccountId
   });
 }
 
-// Add this new function to clear the client filter
 function showAllAccounts() {
   const url = new URL(window.location.href);
   url.searchParams.delete('all_cts_clientId');
   window.history.replaceState({}, '', url.toString());
   
-  // Emit via event bus to clear the filter
   eventBus?.emit('client-id-changed', {
     clientId: null,
     accountId: null
   });
 }
+
+// Ensure the cleanup function is called when the component is unmounted
+onBeforeUnmount(() => {
+  if (q._cleanup) {
+    q._cleanup()
+  }
+})
 </script>
 
 <template>
@@ -128,6 +329,7 @@ function showAllAccounts() {
           <h2>Margin</h2>
         </div>
 
+        <!-- All Accounts Row -->
         <div 
           v-if="allAccountsSummary" 
           class="metric-row all-accounts-row"
@@ -146,17 +348,19 @@ function showAllAccounts() {
               <div class="metric-label">Add'l GMV to start-reducing cap</div>
               <div class="metric-value">{{ formatCurrency(allAccountsSummary.totalAddlGmvToStartReducing) }}</div>
             </div>
-            <!-- <div class="row-status ok">OK</div> -->
           </div>
         </div>
 
+        <!-- Individual Client Rows -->
         <div 
           v-for="(item, index) in calculatedMetrics" 
-          :key="item.nlv_id" 
+          :key="`client-${item.nlv_internal_account_id}-${item.nlv_id}`" 
           class="metric-row"
         >
           <div class="row-header-button-container">
-            <div class="row-header" @click="updateClientInRoute(item.nlv_internal_account_id)">Client{{ index + 1 }}</div>
+            <div class="row-header" @click="updateClientInRoute(item.nlv_internal_account_id)">
+              Client{{ index + 1 }}
+            </div>
             <button 
               :class="['row-status', item.addlGmvAllowedNlvSide < 0 && item.addlGmvAllowedMaintenanceSide < 0 ? 'stage-2-exhausted' : (item.addlGmvAllowedNlvSide < 0 ? 'stage-1-exhausted' : 'ok')]"
               @click="toggleBreakdown(item.nlv_id)"
@@ -166,16 +370,63 @@ function showAllAccounts() {
           </div>
           <div class="row-content">
             <div class="metric-column">
-              <div class="metric-label">NLV</div>
+              <div class="metric-label-with-icon">
+                <span class="metric-label">NLV</span>
+                <button 
+                  class="graph-icon" 
+                  @click="toggleGraph(item.nlv_internal_account_id, 'nlv')"
+                  :class="{ active: graphVisibility[item.nlv_internal_account_id]?.nlv }"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M3 13h4v8H3v-8zm6-10h4v18H9V3zm6 6h4v12h-4V9z"/>
+                  </svg>
+                </button>
+              </div>
               <div class="metric-value">{{ formatCurrency(item.nlv_val) }}</div>
               <div class="metric-label">Add'l GMV to stop-reducing cap</div>
               <div class="metric-value">{{ formatCurrency(item.addlGmvAllowedNlvSide) }}</div>
             </div>
             <div class="metric-column">
-              <div class="metric-label">Maintenance margin</div>
+              <div class="metric-label-with-icon">
+                <span class="metric-label">Maintenance margin</span>
+                <button 
+                  class="graph-icon" 
+                  @click="toggleGraph(item.nlv_internal_account_id, 'mm')"
+                  :class="{ active: graphVisibility[item.nlv_internal_account_id]?.mm }"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M3 13h4v8H3v-8zm6-10h4v18H9V3zm6 6h4v12h-4V9z"/>
+                  </svg>
+                </button>
+              </div>
               <div class="metric-value">{{ formatCurrency(item.maintenance_val) }}</div>
               <div class="metric-label">Add'l GMV to start-reducing cap</div>
               <div class="metric-value">{{ formatCurrency(item.addlGmvAllowedMaintenanceSide) }}</div>
+            </div>
+          </div>
+
+          <!-- Chart.js Graph Display Section -->
+          <div v-if="graphVisibility[item.nlv_internal_account_id]?.nlv || graphVisibility[item.nlv_internal_account_id]?.mm" class="graph-section">
+            <div v-if="currentHistoryQuery?.isLoading.value" class="graph-loading">
+              Loading {{ selectedGraphType === 'nlv' ? 'NLV' : 'Maintenance Margin' }} historical data...
+            </div>
+            <div v-else-if="currentHistoryQuery?.isError.value" class="graph-error">
+              Error loading {{ selectedGraphType === 'nlv' ? 'NLV' : 'Maintenance Margin' }} historical data: {{ currentHistoryQuery.error.value }}
+            </div>
+            <div v-else-if="chartData" class="chart-section">
+              <h4>
+                {{ selectedGraphType === 'nlv' ? 'NLV' : 'Maintenance Margin' }} History
+              </h4>
+              <div class="chart-container">
+                <Line 
+                  :data="chartData" 
+                  :options="chartOptions" 
+                  :height="300"
+                />
+              </div>
+            </div>
+            <div v-else class="graph-empty">
+              No {{ selectedGraphType === 'nlv' ? 'NLV' : 'Maintenance Margin' }} historical data available
             </div>
           </div>
 
@@ -249,7 +500,24 @@ function showAllAccounts() {
 </template>
 
 <style scoped>
-/* Main Dashboard Container */
+/* Chart styles */
+.chart-section h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1f2a37;
+  margin-bottom: 1rem;
+}
+
+.chart-container {
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+  height: 350px;
+}
+
+/* Keep all existing styles */
 .dashboard-container {
   width: 100%;
   margin: 0 auto;
@@ -259,7 +527,6 @@ function showAllAccounts() {
   border-radius: 12px;
 }
 
-/* Header Section */
 .block-header {
   display: flex;
   justify-content: space-between;
@@ -274,20 +541,6 @@ function showAllAccounts() {
   color: #1f2a37;
 }
 
-.status {
-  padding: 0.25rem 0.75rem;
-  border-radius: 20px;
-  font-weight: 600;
-  font-size: 0.8rem;
-  text-transform: uppercase;
-}
-
-.status.ok {
-  background-color: #d1fae5;
-  color: #065f46;
-}
-
-/* Individual Metric Rows */
 .metric-row {
   background-color: #ffffff;
   border-radius: 8px;
@@ -312,10 +565,9 @@ function showAllAccounts() {
   font-weight: 600;
   color: #1f2a37;
   margin: 0;
-  cursor: pointer; /* Add this line */
+  cursor: pointer;
 }
 
-/* Updated grid layout for content */
 .row-content {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -339,13 +591,6 @@ function showAllAccounts() {
   font-weight: 700;
   color: #1f2a37;
   margin-bottom: 1rem;
-}
-
-.metric-label.small, .metric-value.small {
-  font-size: 1rem;
-  font-weight: 500;
-  color: #1f2a37;
-  margin-bottom: 0.5rem;
 }
 
 .row-status {
@@ -376,6 +621,52 @@ function showAllAccounts() {
   color: #92400e;
 }
 
+.metric-label-with-icon {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.graph-icon {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #6b7280;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.graph-icon:hover {
+  color: #3b82f6;
+  background-color: #f3f4f6;
+}
+
+.graph-icon.active {
+  color: #3b82f6;
+  background-color: #dbeafe;
+}
+
+.graph-section {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.graph-loading, .graph-error, .graph-empty {
+  text-align: center;
+  padding: 2rem;
+  color: #6b7280;
+  font-style: italic;
+}
+
+.graph-error {
+  color: #dc2626;
+}
+
 .loading, .error {
   text-align: center;
   padding: 2rem;
@@ -396,7 +687,6 @@ function showAllAccounts() {
   100% { transform: rotate(360deg); }
 }
 
-/* New CSS for the Breakdown Section */
 .calculation-breakdown {
   margin-top: 1.5rem;
   padding-top: 1.5rem;
