@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, computed, reactive, inject, ref } from 'vue'
+import { onBeforeUnmount, computed, reactive, inject, ref, onMounted, watch } from 'vue'
 import { useNlvMarginQuery, type nlvMargin } from '@y2kfund/core/nlvMargin'
 import { useQuery, useQueryClient } from '@tanstack/vue-query'
 import { useSupabase } from '@y2kfund/core'
@@ -35,6 +35,32 @@ const breakdownVisibility: { [key: number]: boolean } = reactive({});
 const graphVisibility: { [key: number]: { nlv: boolean; mm: boolean } } = reactive({});
 const selectedAccountForHistory = ref<number | null>(null)
 const selectedGraphType = ref<'nlv' | 'mm' | null>(null)
+
+// Add URL parameter tracking
+const selectedClientFromUrl = ref<string | null>(null)
+
+// Function to get URL parameters
+function getUrlParams() {
+  const urlParams = new URLSearchParams(window.location.search)
+  return urlParams.get('all_cts_clientId')
+}
+
+// Function to extract client number from URL parameter
+function extractClientNumber(clientParam: string | null): number | null {
+  if (!clientParam) return null
+  const match = clientParam.match(/Client\s*(\d+)/i)
+  return match ? parseInt(match[1]) : null
+}
+
+// Watch for URL changes
+onMounted(() => {
+  selectedClientFromUrl.value = getUrlParams()
+  
+  // Listen for popstate events (browser back/forward)
+  window.addEventListener('popstate', () => {
+    selectedClientFromUrl.value = getUrlParams()
+  })
+})
 
 // Historical data query - directly in component
 const supabase = useSupabase()
@@ -258,6 +284,26 @@ const calculatedMetrics = computed(() => {
   });
 });
 
+// Computed property for filtered metrics based on URL parameter
+const filteredMetrics = computed(() => {
+  if (!selectedClientFromUrl.value || !calculatedMetrics.value) {
+    return calculatedMetrics.value;
+  }
+  
+  const clientNumber = extractClientNumber(selectedClientFromUrl.value);
+  if (clientNumber === null) {
+    return calculatedMetrics.value;
+  }
+  
+  // Find the specific client (assuming Client1 is index 0, Client2 is index 1, etc.)
+  const targetIndex = clientNumber - 1;
+  if (targetIndex >= 0 && targetIndex < calculatedMetrics.value.length) {
+    return [calculatedMetrics.value[targetIndex]];
+  }
+  
+  return calculatedMetrics.value;
+});
+
 const allAccountsSummary = computed(() => {
   if (!calculatedMetrics.value) return null;
   const totalNlv = calculatedMetrics.value.reduce((sum, item) => sum + (item.nlv_val || 0), 0);
@@ -281,12 +327,18 @@ function toggleBreakdown(clientId: number) {
 const eventBus = inject('eventBus');
 
 function updateClientInRoute(userAccountId: number) {
+  const clientIndex = calculatedMetrics.value?.findIndex(item => item.nlv_internal_account_id === userAccountId) ?? -1;
+  const clientNumber = clientIndex + 1;
+  
   const url = new URL(window.location.href);
-  url.searchParams.set('all_cts_clientId', 'Client ' + userAccountId.toString());
+  url.searchParams.set('all_cts_clientId', 'Client ' + clientNumber.toString());
   window.history.replaceState({}, '', url.toString());
   
+  // Update the local state
+  selectedClientFromUrl.value = 'Client ' + clientNumber.toString();
+  
   eventBus?.emit('client-id-changed', {
-    clientId: 'Client ' + userAccountId.toString(),
+    clientId: 'Client ' + clientNumber.toString(),
     accountId: userAccountId
   });
 }
@@ -295,6 +347,9 @@ function showAllAccounts() {
   const url = new URL(window.location.href);
   url.searchParams.delete('all_cts_clientId');
   window.history.replaceState({}, '', url.toString());
+  
+  // Update the local state
+  selectedClientFromUrl.value = null;
   
   eventBus?.emit('client-id-changed', {
     clientId: null,
@@ -353,13 +408,13 @@ onBeforeUnmount(() => {
 
         <!-- Individual Client Rows -->
         <div 
-          v-for="(item, index) in calculatedMetrics" 
+          v-for="(item, index) in filteredMetrics" 
           :key="`client-${item.nlv_internal_account_id}-${item.nlv_id}`" 
           class="metric-row"
         >
           <div class="row-header-button-container">
             <div class="row-header" @click="updateClientInRoute(item.nlv_internal_account_id)">
-              Client{{ index + 1 }}
+              Client{{ calculatedMetrics?.findIndex(m => m.nlv_internal_account_id === item.nlv_internal_account_id) + 1 }}
             </div>
             <button 
               :class="['row-status', item.addlGmvAllowedNlvSide < 0 && item.addlGmvAllowedMaintenanceSide < 0 ? 'stage-2-exhausted' : (item.addlGmvAllowedNlvSide < 0 ? 'stage-1-exhausted' : 'ok')]"
@@ -375,7 +430,7 @@ onBeforeUnmount(() => {
                 <button 
                   class="graph-icon" 
                   @click="toggleGraph(item.nlv_internal_account_id, 'nlv')"
-                  :class="{ active: graphVisibility[item.nlv_internal_account_id]?.nlv }"
+                  :class="{ active: graphVisibility[item.nlv_internal_accountId]?.nlv }"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M3 13h4v8H3v-8zm6-10h4v18H9V3zm6 6h4v12h-4V9z"/>
@@ -392,7 +447,7 @@ onBeforeUnmount(() => {
                 <button 
                   class="graph-icon" 
                   @click="toggleGraph(item.nlv_internal_account_id, 'mm')"
-                  :class="{ active: graphVisibility[item.nlv_internal_account_id]?.mm }"
+                  :class="{ active: graphVisibility[item.nlv_internal_accountId]?.mm }"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M3 13h4v8H3v-8zm6-10h4v18H9V3zm6 6h4v12h-4V9z"/>
