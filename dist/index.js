@@ -7295,7 +7295,7 @@ const sc = /* @__PURE__ */ ic("line", Te), nc = { class: "dashboard-container" }
         ])) : Rt(t).isSuccess.value ? (K(), X("div", ac, [
           v("div", lc, [
             _[24] || (_[24] = v("div", { class: "block-header" }, [
-              v("h2", null, "Margin")
+              v("h2", null, "Summary")
             ], -1)),
             S.value ? (K(), X("div", cc, [
               v("div", {
@@ -7463,7 +7463,7 @@ const sc = /* @__PURE__ */ ic("line", Te), nc = { class: "dashboard-container" }
   for (const [s, n] of t)
     e[s] = n;
   return e;
-}, _h = /* @__PURE__ */ uh(dh, [["__scopeId", "data-v-b9310f26"]]);
+}, _h = /* @__PURE__ */ uh(dh, [["__scopeId", "data-v-881194f4"]]);
 export {
   _h as Margin,
   _h as default

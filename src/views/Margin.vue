@@ -381,7 +381,7 @@ onBeforeUnmount(() => {
     <div v-else-if="q.isSuccess.value">
       <div class="metric-block">
         <div class="block-header">
-          <h2>Margin</h2>
+          <h2>Summary</h2>
         </div>
 
         <!-- All Accounts Row -->
