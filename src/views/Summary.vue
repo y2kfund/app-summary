@@ -31,6 +31,10 @@ const props = withDefaults(defineProps<SummaryProps>(), {
   showHeaderLink: false
 })
 
+const emit = defineEmits<{
+  'minimize': []
+}>()
+
 const q = useNlvMarginQuery(10000)
 
 // New state to manage the visibility of the breakdown for each client
@@ -390,6 +394,13 @@ onBeforeUnmount(() => {
             <router-link v-if="showHeaderLink" to="/summary" class="summary-link">Summary</router-link>
             <span v-else>Summary</span>
           </h2>
+          <button 
+            @click="emit('minimize')"
+            class="minimize-button"
+            title="Minimize Summary"
+          >
+            −
+          </button>
         </div>
 
         <!-- All Accounts Row -->
@@ -602,6 +613,33 @@ onBeforeUnmount(() => {
   font-weight: 500;
   margin: 0;
   color: #1f2a37;
+}
+
+.minimize-button {
+  background: #f9fafb;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1rem;
+  color: #6b7280;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.minimize-button:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+  color: #374151;
+  transform: scale(1.05);
+}
+
+.minimize-button:active {
+  transform: scale(0.95);
 }
 
 .metric-row {
