@@ -1,5 +1,5 @@
 ## Why is a dist folder important?
-[app-dashboard](https://github.com/y2kfund/app-dashboard) in its [package.json](https://github.com/y2kfund/app-dashboard/blob/main/package.json) when it references [app-margin]( https://github.com/y2kfund/app-dashboard/blob/a8d4e8a70e4d367e8a47bf6ed209cf6f3765bca8/package.json#L22) the code is picked up from [dist](https://github.com/y2kfund/app-margin/tree/main/dist) folder.
+[app-dashboard](https://github.com/y2kfund/app-dashboard) in its [package.json](https://github.com/y2kfund/app-dashboard/blob/main/package.json) when it references [app-summary]( https://github.com/y2kfund/app-dashboard/blob/a8d4e8a70e4d367e8a47bf6ed209cf6f3765bca8/package.json#L22) the code is picked up from [dist](https://github.com/y2kfund/app-summary/tree/main/dist) folder.
 
 ## How to create a new dist folder?
 ```

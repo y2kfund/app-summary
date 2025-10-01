@@ -1,15 +1,15 @@
 {
-  "name": "@y2kfund/margin",
+  "name": "@y2kfund/summary",
   "private": false,
   "version": "0.1.1",
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/y2kfund/app-margin.git"
+    "url": "git+https://github.com/y2kfund/app-summary.git"
   },
-  "homepage": "https://github.com/y2kfund/app-margin#readme",
+  "homepage": "https://github.com/y2kfund/app-summary#readme",
   "bugs": {
-    "url": "https://github.com/y2kfund/app-margin/issues"
+    "url": "https://github.com/y2kfund/app-summary/issues"
   },
   "main": "./dist/index.js",
   "module": "./dist/index.js",

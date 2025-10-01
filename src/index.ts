@@ -1,8 +1,8 @@
 // src/index.ts
-import Margin from './views/Margin.vue'
+import Summary from './views/Summary.vue'
 
 // Named export
-export { Margin }
+export { Summary }
 
 // Default export (optional)
-export default Margin
+export default Summary

@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => {
         outDir: 'dist',
         lib: {
           entry: './src/index.ts',
-          name: 'Margin',
+          name: 'Summary',
           formats: ['es'],
           fileName: 'index'
         },

@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
 
-import Home from '../views/Margin.vue'
+import Home from '../views/Summary.vue'
 // import Page2 from '../views/Page2.vue'
 
 // Use the correct type for the routes array
