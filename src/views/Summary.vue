@@ -14,6 +14,7 @@ import {
   Legend,
 } from 'chart.js'
 import { Line } from 'vue-chartjs'
+import type { SummaryProps } from '../index'
 
 // Register Chart.js components
 ChartJS.register(
@@ -25,6 +26,10 @@ ChartJS.register(
   Tooltip,
   Legend
 )
+
+const props = withDefaults(defineProps<SummaryProps>(), {
+  showHeaderLink: false
+})
 
 const q = useNlvMarginQuery(10000)
 
@@ -381,7 +386,10 @@ onBeforeUnmount(() => {
     <div v-else-if="q.isSuccess.value">
       <div class="metric-block">
         <div class="block-header">
-          <h2><router-link to="/summary" class="summary-link">Summary</router-link></h2>
+          <h2>
+            <router-link v-if="showHeaderLink" to="/summary" class="summary-link">Summary</router-link>
+            <span v-else>Summary</span>
+          </h2>
         </div>
 
         <!-- All Accounts Row -->
