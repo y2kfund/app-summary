@@ -7298,7 +7298,7 @@ const rc = /* @__PURE__ */ oc("line", Te), ac = { class: "dashboard-container" }
             v("div", uc, [
               v("h2", null, [
                 Ii(P, {
-                  to: "/margin",
+                  to: "/summary",
                   class: "summary-link"
                 }, {
                   default: jn(() => [..._[3] || (_[3] = [
@@ -7474,7 +7474,7 @@ const rc = /* @__PURE__ */ oc("line", Te), ac = { class: "dashboard-container" }
   for (const [s, n] of t)
     e[s] = n;
   return e;
-}, wh = /* @__PURE__ */ mh(ph, [["__scopeId", "data-v-dd28b67c"]]);
+}, wh = /* @__PURE__ */ mh(ph, [["__scopeId", "data-v-5612fb75"]]);
 export {
   wh as Summary,
   wh as default
