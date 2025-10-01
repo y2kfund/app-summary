@@ -24,18 +24,6 @@
   "files": [
     "dist"
   ],
-  "scripts": {
-    "_devComment": "Command '>npm run dev' for development with hot reload uses local package from ../app-core",
-    "dev": "npm run deps:dev && vite",
-    "_buildComment": "uses package from Git repository for app-core",
-    "build": "npm run deps:prod && vite build",
-    "build:lib": "npm run deps:prod && vite build --mode lib",
-     "_previewComment": "Serves locally built files from dist/ folder. it doesn't build, just serves what's already in dist/",   
-    "preview": "vite preview",
-    "_comment": "deps:dev installs local package temporarily (--no-save), deps:prod ensures Git repo is used",
-    "deps:dev": "npm install @y2kfund/core@file:../app-core --no-save",
-    "deps:prod": "npm install @y2kfund/core@git+https://github.com/y2kfund/app-core.git --no-save"
-  },
   "dependencies": {
     "chart.js": "^4.5.0",
     "vue": "^3.4.0",
@@ -56,5 +44,17 @@
     "vite": "^5.0.0",
     "vite-plugin-dts": "^4.5.4",
     "vue-tsc": "^2.0.0"
+  },
+  "scripts": {
+    "_devComment": "Command '>npm run dev' for development with hot reload uses local package from ../app-core",
+    "dev": "npm run deps:dev && vite",
+    "_buildComment": "uses package from Git repository for app-core",
+    "build": "npm run deps:prod && vite build",
+    "build:lib": "npm run deps:prod && vite build --mode lib",
+     "_previewComment": "Serves locally built files from dist/ folder. it doesn't build, just serves what's already in dist/",   
+    "preview": "vite preview",
+    "_comment": "deps:dev installs local package temporarily (--no-save), deps:prod ensures Git repo is used",
+    "deps:dev": "npm install @y2kfund/core@file:../app-core --no-save",
+    "deps:prod": "npm install @y2kfund/core@git+https://github.com/y2kfund/app-core.git --no-save"
   }
 }
