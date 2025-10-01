@@ -1,3 +1,3 @@
-import { default as Margin } from './views/Margin.vue';
-export { Margin };
-export default Margin;
+import { default as Summary } from './views/Summary.vue';
+export { Summary };
+export default Summary;

@@ -7098,7 +7098,7 @@ const rc = /* @__PURE__ */ oc("line", Te), ac = { class: "dashboard-container" }
   key: 1,
   class: "calculation-breakdown"
 }, Vc = { class: "breakdown-columns" }, jc = { class: "breakdown-stage stage-1" }, $c = { class: "stage-item" }, Uc = { class: "item-value" }, Yc = { class: "formula" }, Gc = { class: "stage-item" }, qc = { class: "item-value" }, Xc = { class: "formula" }, Kc = { class: "stage-item" }, Qc = { class: "item-value" }, Zc = { class: "formula" }, Jc = { class: "stage-item" }, th = { class: "item-value" }, eh = { class: "formula" }, ih = { class: "breakdown-stage stage-2" }, sh = { class: "stage-item" }, nh = { class: "item-value" }, oh = { class: "formula" }, rh = { class: "stage-item" }, ah = { class: "item-value" }, lh = { class: "formula" }, ch = { class: "stage-item" }, hh = { class: "item-value" }, dh = { class: "formula" }, uh = { class: "stage-item" }, fh = { class: "item-value" }, gh = { class: "formula" }, ph = /* @__PURE__ */ mi({
-  __name: "Margin",
+  __name: "Summary",
   setup(i) {
     $e.register(
       gi,
@@ -7474,8 +7474,8 @@ const rc = /* @__PURE__ */ oc("line", Te), ac = { class: "dashboard-container" }
   for (const [s, n] of t)
     e[s] = n;
   return e;
-}, wh = /* @__PURE__ */ mh(ph, [["__scopeId", "data-v-54efd998"]]);
+}, wh = /* @__PURE__ */ mh(ph, [["__scopeId", "data-v-dd28b67c"]]);
 export {
-  wh as Margin,
+  wh as Summary,
   wh as default
 };
