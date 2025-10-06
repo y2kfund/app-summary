@@ -386,7 +386,7 @@ const breakdownItems = computed(() => {
 const eventBus = inject('eventBus');
 
 function updateClientInRoute(userAccountId: number) {
-  const clientIndex = calculatedMetrics.value?.findIndex(item => item.nlv_internal_account_id === userAccountId) ?? -1;
+  const clientIndex = calculatedMetrics.value?.findIndex(item => parseInt(item.nlv_internal_account_id) === userAccountId) ?? -1;
   const clientNumber = clientIndex + 1;
   
   const url = new URL(window.location.href);
