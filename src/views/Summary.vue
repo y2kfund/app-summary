@@ -602,9 +602,9 @@ const gridRowData = computed(() => {
   
   const data = [...filteredMetrics.value];
   
-  // Add totals row if showing all accounts
+  // Add totals row if showing all accounts - move to bottom
   if (!selectedClientFromUrl.value && allAccountsSummary.value) {
-    data.unshift({
+    data.push({
       nlv_internal_account_id: -1,
       nlv_val: allAccountsSummary.value.totalNlv,
       maintenance_val: allAccountsSummary.value.totalMaintenance,

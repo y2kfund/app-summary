@@ -46001,7 +46001,7 @@ const e1 = /* @__PURE__ */ JO("line", nn), t1 = { class: "dashboard-container" }
     }), M = Th("eventBus");
     function H(F) {
       var N;
-      const K = (((N = S.value) == null ? void 0 : N.findIndex((W) => W.nlv_internal_account_id === F)) ?? -1) + 1, G = new URL(window.location.href);
+      const K = (((N = S.value) == null ? void 0 : N.findIndex((W) => parseInt(W.nlv_internal_account_id) === F)) ?? -1) + 1, G = new URL(window.location.href);
       G.searchParams.set("all_cts_clientId", "Client " + K.toString()), window.history.replaceState({}, "", G.toString()), c.value = "Client " + K.toString(), M == null || M.emit("client-id-changed", {
         clientId: "Client " + K.toString(),
         accountId: F
@@ -46126,7 +46126,7 @@ const e1 = /* @__PURE__ */ JO("line", nn), t1 = { class: "dashboard-container" }
     const q = He(() => {
       if (!S.value) return [];
       const F = [...R.value];
-      return !c.value && E.value && F.unshift({
+      return !c.value && E.value && F.push({
         nlv_internal_account_id: -1,
         nlv_val: E.value.totalNlv,
         maintenance_val: E.value.totalMaintenance,
@@ -46282,7 +46282,7 @@ const e1 = /* @__PURE__ */ JO("line", nn), t1 = { class: "dashboard-container" }
   for (const [s, o] of t)
     i[s] = o;
   return i;
-}, Z1 = /* @__PURE__ */ U1(z1, [["__scopeId", "data-v-4ea82d93"]]);
+}, Z1 = /* @__PURE__ */ U1(z1, [["__scopeId", "data-v-d095adcf"]]);
 export {
   Z1 as Summary,
   Z1 as default
