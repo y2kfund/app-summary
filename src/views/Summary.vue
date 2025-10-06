@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import { onBeforeUnmount, computed, reactive, inject, ref, onMounted, watch } from 'vue'
+import { onMounted, onBeforeUnmount, computed, reactive, inject, ref, watch } from 'vue'
+import { AgGridVue } from 'ag-grid-vue3'
+import { AllCommunityModule } from 'ag-grid-community'
+import type { ColDef, GridApi, ColumnApi } from 'ag-grid-community'
+import 'ag-grid-community/styles/ag-grid.css'
+import 'ag-grid-community/styles/ag-theme-alpine.css'
 import { useNlvMarginQuery, type nlvMargin } from '@y2kfund/core/nlvMargin'
 import { useQuery, useQueryClient } from '@tanstack/vue-query'
 import { useSupabase } from '@y2kfund/core'
@@ -35,15 +40,19 @@ const emit = defineEmits<{
   'minimize': []
 }>()
 
-const q = useNlvMarginQuery(10000)
+// Grid refs
+const gridApi = ref<GridApi | null>(null)
+const columnApiRef = ref<ColumnApi | null>(null)
 
-// New state to manage the visibility of the breakdown for each client
-const breakdownVisibility: { [key: number]: boolean } = reactive({});
+const q = useNlvMarginQuery(10000)
 
 // State for graph visibility and selected account
 const graphVisibility: { [key: number]: { nlv: boolean; mm: boolean } } = reactive({});
 const selectedAccountForHistory = ref<number | null>(null)
 const selectedGraphType = ref<'nlv' | 'mm' | null>(null)
+
+// Add missing breakdownVisibility reactive object
+const breakdownVisibility: { [key: number]: boolean } = reactive({});
 
 // Add URL parameter tracking
 const selectedClientFromUrl = ref<string | null>(null)
@@ -330,9 +339,50 @@ const allAccountsSummary = computed(() => {
 });
 
 function toggleBreakdown(clientId: number) {
-  breakdownVisibility[clientId] = !breakdownVisibility[clientId];
+  console.log('📋 toggleBreakdown called with ID:', clientId);
+  console.log('📋 Current breakdownVisibility state:', breakdownVisibility);
+  
+  // Ensure the key is a number
+  const numericClientId = typeof clientId === 'string' ? parseInt(clientId) : clientId;
+  
+  // Check if this breakdown is currently visible
+  const wasVisible = breakdownVisibility[numericClientId];
+  
+  // Close all other breakdowns first (like the graph functionality)
+  Object.keys(breakdownVisibility).forEach(id => {
+    const numId = parseInt(id);
+    breakdownVisibility[numId] = false;
+  });
+  
+  // Toggle the clicked breakdown (if it wasn't visible, show it; if it was visible, keep it closed)
+  breakdownVisibility[numericClientId] = !wasVisible;
+  
+  console.log('📋 Updated breakdownVisibility state:', breakdownVisibility);
+  console.log('📋 breakdownVisibility[' + numericClientId + ']:', breakdownVisibility[numericClientId]);
 }
 
+// Add a computed property to help debug the breakdown filter
+const breakdownItems = computed(() => {
+  console.log('🔍 Computing breakdown items...');
+  console.log('🔍 filteredMetrics:', filteredMetrics.value);
+  console.log('🔍 breakdownVisibility:', breakdownVisibility);
+  
+  const items = filteredMetrics.value?.filter(item => {
+    // Convert string to number for consistent comparison
+    const accountId = typeof item.nlv_internal_account_id === 'string' 
+      ? parseInt(item.nlv_internal_account_id) 
+      : item.nlv_internal_account_id;
+    
+    const shouldShow = breakdownVisibility[accountId];
+    console.log('🔍 Item', accountId, '(original:', item.nlv_internal_account_id, ') should show:', shouldShow);
+    return shouldShow;
+  }) || [];
+  
+  console.log('🔍 Final breakdown items:', items);
+  return items;
+});
+
+// Event bus for communication between components
 const eventBus = inject('eventBus');
 
 function updateClientInRoute(userAccountId: number) {
@@ -365,6 +415,207 @@ function showAllAccounts() {
     accountId: null
   });
 }
+
+// Column definitions for ag-Grid
+const columnDefs = computed<ColDef[]>(() => [
+  {
+    headerName: 'Account',
+    field: 'account',
+    valueGetter: (params) => {
+      if (params.data.isTotal) return 'All Accounts (Total)';
+      const accountId = typeof params.data.nlv_internal_account_id === 'string' 
+        ? parseInt(params.data.nlv_internal_account_id) 
+        : params.data.nlv_internal_account_id;
+      const index = calculatedMetrics.value?.findIndex(m => {
+        const mAccountId = typeof m.nlv_internal_account_id === 'string' 
+          ? parseInt(m.nlv_internal_account_id) 
+          : m.nlv_internal_account_id;
+        return mAccountId === accountId;
+      }) ?? -1;
+      return `Client${index + 1}`;
+    },
+    pinned: 'left',
+    width: 150,
+    cellRenderer: (params) => {
+      if (params.data.isTotal) {
+        return `<div class="account-cell total-row">
+          <span class="account-name">${params.value}</span>
+        </div>`;
+      }
+      
+      const status = params.data.addlGmvAllowedNlvSide < 0 && params.data.addlGmvAllowedMaintenanceSide < 0 
+        ? 'STAGE 2 EXHAUSTED' 
+        : (params.data.addlGmvAllowedNlvSide < 0 ? 'STAGE 1 EXHAUSTED' : 'OK');
+      const statusClass = status === 'STAGE 2 EXHAUSTED' ? 'status-stage2' : 
+                         status === 'STAGE 1 EXHAUSTED' ? 'status-stage1' : 'status-ok';
+      return `<div class="account-cell">
+        <span class="account-name">${params.value}</span>
+        <span class="status-badge ${statusClass}">${status}</span>
+      </div>`;
+    }
+  },
+  {
+    headerName: 'NLV',
+    field: 'nlv_val',
+    valueFormatter: (params) => formatCurrency(params.value),
+    cellClass: 'number-cell',
+    headerClass: 'graph-header',
+    cellRenderer: (params) => {
+      if (params.data.isTotal) {
+        return `<span class="cell-value total-cell">${formatCurrency(params.value)}</span>`;
+      }
+      const accountId = typeof params.data.nlv_internal_account_id === 'string' 
+        ? parseInt(params.data.nlv_internal_account_id) 
+        : params.data.nlv_internal_account_id;
+      const isActive = graphVisibility[accountId]?.nlv;
+      return `<div class="cell-with-graph">
+        <span class="cell-value">${formatCurrency(params.value)}</span>
+        <button class="graph-btn ${isActive ? 'active' : ''}" data-account="${accountId}" data-type="nlv">📊</button>
+      </div>`;
+    },
+    width: 200
+  },
+  {
+    headerName: 'Maintenance Margin',
+    field: 'maintenance_val',
+    valueFormatter: (params) => formatCurrency(params.value),
+    cellClass: 'number-cell',
+    headerClass: 'graph-header',
+    cellRenderer: (params) => {
+      if (params.data.isTotal) {
+        return `<span class="cell-value total-cell">${formatCurrency(params.value)}</span>`;
+      }
+      const accountId = typeof params.data.nlv_internal_account_id === 'string' 
+        ? parseInt(params.data.nlv_internal_account_id) 
+        : params.data.nlv_internal_account_id;
+      const isActive = graphVisibility[accountId]?.mm;
+      return `<div class="cell-with-graph">
+        <span class="cell-value">${formatCurrency(params.value)}</span>
+        <button class="graph-btn ${isActive ? 'active' : ''}" data-account="${accountId}" data-type="mm">📊</button>
+      </div>`;
+    },
+    width: 220
+  },
+  {
+    headerName: "Add'l GMV to Stop-Reducing Cap",
+    field: 'addlGmvAllowedNlvSide',
+    valueFormatter: (params) => formatCurrency(params.value),
+    cellClass: (params) => {
+      const baseClass = 'number-cell';
+      if (params.data.isTotal) return `${baseClass} total-cell`;
+      return params.value < 0 ? `${baseClass} negative` : baseClass;
+    },
+    width: 250
+  },
+  {
+    headerName: "Add'l GMV to Start-Reducing Cap",
+    field: 'addlGmvAllowedMaintenanceSide',
+    valueFormatter: (params) => formatCurrency(params.value),
+    cellClass: (params) => {
+      const baseClass = 'number-cell';
+      if (params.data.isTotal) return `${baseClass} total-cell`;
+      return params.value < 0 ? `${baseClass} negative` : baseClass;
+    },
+    width: 250
+  },
+  {
+    headerName: 'Actions',
+    field: 'actions',
+    width: 120,
+    cellRenderer: (params) => {
+      if (params.data.isTotal) return '';
+      const accountId = typeof params.data.nlv_internal_account_id === 'string' 
+        ? parseInt(params.data.nlv_internal_account_id) 
+        : params.data.nlv_internal_account_id;
+      return `<button class="breakdown-btn" data-account="${accountId}">Details</button>`;
+    },
+    sortable: false,
+    filter: false
+  }
+]);
+
+// Grid ready handler
+function onGridReady(event: any) {
+  gridApi.value = event.api;
+  columnApiRef.value = event.columnApi;
+  
+  // Add click event listeners for buttons using the grid container element
+  const gridElement = document.querySelector('.summary-ag-grid .ag-root-wrapper');
+  if (gridElement) {
+    gridElement.addEventListener('click', (event: Event) => {
+      const target = event.target as HTMLElement;
+      
+      if (target.classList.contains('graph-btn')) {
+        const accountId = parseInt(target.getAttribute('data-account') || '0');
+        const type = target.getAttribute('data-type') as 'nlv' | 'mm';
+        toggleGraph(accountId, type);
+        // Refresh the grid to update button states
+        if (gridApi.value && typeof gridApi.value.refreshCells === 'function') {
+          gridApi.value.refreshCells();
+        }
+      }
+      
+      if (target.classList.contains('breakdown-btn')) {
+        const accountId = parseInt(target.getAttribute('data-account') || '0');
+        console.log('🔧 Details button clicked for account:', accountId);
+        
+        // Find the item by nlv_internal_account_id (comparing as numbers)
+        const item = calculatedMetrics.value?.find(m => {
+          const mAccountId = typeof m.nlv_internal_account_id === 'string' 
+            ? parseInt(m.nlv_internal_account_id) 
+            : m.nlv_internal_account_id;
+          return mAccountId === accountId;
+        });
+        
+        console.log('📋 Found item for breakdown:', item);
+        
+        if (item) {
+          console.log('🎯 Toggling breakdown for account ID:', accountId);
+          toggleBreakdown(accountId);
+        } else {
+          console.warn('⚠️ No item found for account ID:', accountId);
+        }
+      }
+
+      if (target.classList.contains('account-name') && !target.closest('.total-row')) {
+        // For account name clicks, we need to find the account ID differently
+        // Let's get it from the row data instead of trying to navigate DOM
+        const rowNode = gridApi.value?.getDisplayedRowAtIndex(
+          target.closest('.ag-row')?.getAttribute('row-index') || '0'
+        );
+        if (rowNode?.data && !rowNode.data.isTotal) {
+          const accountId = typeof rowNode.data.nlv_internal_account_id === 'string' 
+            ? parseInt(rowNode.data.nlv_internal_account_id) 
+            : rowNode.data.nlv_internal_account_id;
+          if (accountId) {
+            updateClientInRoute(accountId);
+          }
+        }
+      }
+    });
+  }
+}
+
+// Grid row data with totals
+const gridRowData = computed(() => {
+  if (!calculatedMetrics.value) return [];
+  
+  const data = [...filteredMetrics.value];
+  
+  // Add totals row if showing all accounts
+  if (!selectedClientFromUrl.value && allAccountsSummary.value) {
+    data.unshift({
+      nlv_internal_account_id: -1,
+      nlv_val: allAccountsSummary.value.totalNlv,
+      maintenance_val: allAccountsSummary.value.totalMaintenance,
+      addlGmvAllowedNlvSide: allAccountsSummary.value.totalAddlGmvToStopReducing,
+      addlGmvAllowedMaintenanceSide: allAccountsSummary.value.totalAddlGmvToStartReducing,
+      isTotal: true
+    } as any);
+  }
+  
+  return data;
+});
 
 // Ensure the cleanup function is called when the component is unmounted
 onBeforeUnmount(() => {
@@ -403,166 +654,124 @@ onBeforeUnmount(() => {
           </button>
         </div>
 
-        <!-- All Accounts Row -->
-        <div 
-          v-if="allAccountsSummary" 
-          class="metric-row all-accounts-row"
-        >
-          <div class="row-header" @click="showAllAccounts">All Accounts ({{ q.data.value?.length || 0 }})</div>
-          <div class="row-content">
-            <div class="metric-column">
-              <div class="metric-label">Net liquidation value</div>
-              <div class="metric-value">{{ formatCurrency(allAccountsSummary.totalNlv) }}</div>
-              <div class="metric-label">Add'l GMV to stop-reducing cap</div>
-              <div class="metric-value">{{ formatCurrency(allAccountsSummary.totalAddlGmvToStopReducing) }}</div>
+        <!-- AG Grid Implementation - This should be the ONLY content -->
+        <div class="ag-theme-alpine summary-grid">
+          <AgGridVue
+            :columnDefs="columnDefs"
+            :rowData="gridRowData"
+            :modules="[AllCommunityModule]"
+            :defaultColDef="{
+              resizable: true,
+              sortable: true,
+              filter: true
+            }"
+            :gridOptions="{
+              domLayout: 'autoHeight',
+              suppressMenuHide: true,
+              enableBrowserTooltips: true,
+              getRowStyle: (params) => {
+                if (params.data.isTotal) {
+                  return { 'font-weight': 'bold', 'background-color': '#f8f9fa' };
+                }
+                return null;
+              }
+            }"
+            @grid-ready="onGridReady"
+            class="summary-ag-grid"
+          />
+        </div>
+
+        <!-- Chart.js Graph Display Section -->
+        <div v-if="selectedAccountForHistory && selectedGraphType" class="graph-section">
+          <div v-if="currentHistoryQuery?.isLoading.value" class="graph-loading">
+            Loading {{ selectedGraphType === 'nlv' ? 'NLV' : 'Maintenance Margin' }} historical data...
+          </div>
+          <div v-else-if="currentHistoryQuery?.isError.value" class="graph-error">
+            Error loading {{ selectedGraphType === 'nlv' ? 'NLV' : 'Maintenance Margin' }} historical data: {{ currentHistoryQuery.error.value }}
+          </div>
+          <div v-else-if="chartData" class="chart-section">
+            <h4>
+              {{ selectedGraphType === 'nlv' ? 'NLV' : 'Maintenance Margin' }} History
+            </h4>
+            <div class="chart-container">
+              <Line 
+                :data="chartData" 
+                :options="chartOptions" 
+                :height="300"
+              />
             </div>
-            <div class="metric-column">
-              <div class="metric-label">Maintenance margin</div>
-              <div class="metric-value">{{ formatCurrency(allAccountsSummary.totalMaintenance) }}</div>
-              <div class="metric-label">Add'l GMV to start-reducing cap</div>
-              <div class="metric-value">{{ formatCurrency(allAccountsSummary.totalAddlGmvToStartReducing) }}</div>
-            </div>
+          </div>
+          <div v-else class="graph-empty">
+            No {{ selectedGraphType === 'nlv' ? 'NLV' : 'Maintenance Margin' }} historical data available
           </div>
         </div>
 
-        <!-- Individual Client Rows -->
+        <!-- Calculation Breakdown Section - Use computed property with debugging -->
         <div 
-          v-for="(item, index) in filteredMetrics" 
-          :key="`client-${item.nlv_internal_account_id}-${item.nlv_id}`" 
-          class="metric-row"
+          v-for="item in breakdownItems" 
+          :key="`breakdown-${typeof item.nlv_internal_account_id === 'string' ? parseInt(item.nlv_internal_account_id) : item.nlv_internal_account_id}`"
+          class="calculation-breakdown"
         >
-          <div class="row-header-button-container">
-            <div class="row-header" @click="updateClientInRoute(item.nlv_internal_account_id)">
-              Client{{ calculatedMetrics?.findIndex(m => m.nlv_internal_account_id === item.nlv_internal_account_id) + 1 }}
-            </div>
-            <button 
-              :class="['row-status', item.addlGmvAllowedNlvSide < 0 && item.addlGmvAllowedMaintenanceSide < 0 ? 'stage-2-exhausted' : (item.addlGmvAllowedNlvSide < 0 ? 'stage-1-exhausted' : 'ok')]"
-              @click="toggleBreakdown(item.nlv_id)"
-            >
-              {{ item.addlGmvAllowedNlvSide < 0 && item.addlGmvAllowedMaintenanceSide < 0 ? 'Stage 2 exhausted' : (item.addlGmvAllowedNlvSide < 0 ? 'Stage 1 exhausted' : 'OK') }}
-            </button>
+          <div class="breakdown-header">
+            <div>Calculation breakdown for Client{{ calculatedMetrics?.findIndex(m => {
+              const mAccountId = typeof m.nlv_internal_account_id === 'string' ? parseInt(m.nlv_internal_account_id) : m.nlv_internal_account_id;
+              const itemAccountId = typeof item.nlv_internal_account_id === 'string' ? parseInt(item.nlv_internal_account_id) : item.nlv_internal_account_id;
+              return mAccountId === itemAccountId;
+            }) + 1 }}:</div>
+            <div>Assumptions: maintenance margin (m) = 30%</div>
           </div>
-          <div class="row-content">
-            <div class="metric-column">
-              <div class="metric-label-with-icon">
-                <span class="metric-label">NLV</span>
-                <button 
-                  class="graph-icon" 
-                  @click="toggleGraph(item.nlv_internal_account_id, 'nlv')"
-                  :class="{ active: graphVisibility[item.nlv_internal_accountId]?.nlv }"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M3 13h4v8H3v-8zm6-10h4v18H9V3zm6 6h4v12h-4V9z"/>
-                  </svg>
-                </button>
-              </div>
-              <div class="metric-value">{{ formatCurrency(item.nlv_val) }}</div>
-              <div class="metric-label">Add'l GMV to stop-reducing cap</div>
-              <div class="metric-value">{{ formatCurrency(item.addlGmvAllowedNlvSide) }}</div>
-            </div>
-            <div class="metric-column">
-              <div class="metric-label-with-icon">
-                <span class="metric-label">Maintenance margin</span>
-                <button 
-                  class="graph-icon" 
-                  @click="toggleGraph(item.nlv_internal_account_id, 'mm')"
-                  :class="{ active: graphVisibility[item.nlv_internal_accountId]?.mm }"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M3 13h4v8H3v-8zm6-10h4v18H9V3zm6 6h4v12h-4V9z"/>
-                  </svg>
-                </button>
-              </div>
-              <div class="metric-value">{{ formatCurrency(item.maintenance_val) }}</div>
-              <div class="metric-label">Add'l GMV to start-reducing cap</div>
-              <div class="metric-value">{{ formatCurrency(item.addlGmvAllowedMaintenanceSide) }}</div>
-            </div>
-          </div>
-
-          <!-- Chart.js Graph Display Section -->
-          <div v-if="graphVisibility[item.nlv_internal_account_id]?.nlv || graphVisibility[item.nlv_internal_account_id]?.mm" class="graph-section">
-            <div v-if="currentHistoryQuery?.isLoading.value" class="graph-loading">
-              Loading {{ selectedGraphType === 'nlv' ? 'NLV' : 'Maintenance Margin' }} historical data...
-            </div>
-            <div v-else-if="currentHistoryQuery?.isError.value" class="graph-error">
-              Error loading {{ selectedGraphType === 'nlv' ? 'NLV' : 'Maintenance Margin' }} historical data: {{ currentHistoryQuery.error.value }}
-            </div>
-            <div v-else-if="chartData" class="chart-section">
-              <h4>
-                {{ selectedGraphType === 'nlv' ? 'NLV' : 'Maintenance Margin' }} History
-              </h4>
-              <div class="chart-container">
-                <Line 
-                  :data="chartData" 
-                  :options="chartOptions" 
-                  :height="300"
-                />
-              </div>
-            </div>
-            <div v-else class="graph-empty">
-              No {{ selectedGraphType === 'nlv' ? 'NLV' : 'Maintenance Margin' }} historical data available
-            </div>
-          </div>
-
-          <!-- Calculation Breakdown Section -->
-          <div v-if="breakdownVisibility[item.nlv_id]" class="calculation-breakdown">
-            <div class="breakdown-header">
-              <div>Calculation breakdown:</div>
-              <div>Assumptions: maintenance margin (m) = 30%</div>
-            </div>
-            <div class="breakdown-columns">
-              <div class="breakdown-stage stage-1">
-                <div class="stage-header">Stage-1 (drop d = 15%)</div>
-                <div class="stage-item">
-                  <div class="item-label">Max GMV that survives stop-adding threshold</div>
-                  <div class="item-value">
-                    <span class="formula">Gmax = NLV / [ 1 - (1 - d) x (1 - m) ] = {{ formatCurrency(item.maxGmvNlvSide) }}</span>
-                  </div>
-                </div>
-                <div class="stage-item">
-                  <div class="item-label">Max Maintenance margin (Before drop) to survive drop</div>
-                  <div class="item-value">
-                    <span class="formula">Mk = Gmax x m = {{ formatCurrency(item.mkNlvSide) }}</span>
-                  </div>
-                </div>
-                 <div class="stage-item">
-                  <div class="item-label">Maintenance margin headroom</div>
-                  <div class="item-value">
-                    <span class="formula">Mk - M = {{ formatCurrency(item.maintnanceMarginHeadroomNlvSide) }}</span>
-                  </div>
-                </div>
-                 <div class="stage-item">
-                  <div class="item-label">Add'l GMV allowed</div>
-                  <div class="item-value">
-                    <span class="formula">(Mk - M) / m = {{ formatCurrency(item.addlGmvAllowedNlvSide) }}</span>
-                  </div>
+          <div class="breakdown-columns">
+            <div class="breakdown-stage stage-1">
+              <div class="stage-header">Stage-1 (drop d = 15%)</div>
+              <div class="stage-item">
+                <div class="item-label">Max GMV that survives stop-adding threshold</div>
+                <div class="item-value">
+                  <span class="formula">Gmax = NLV / [ 1 - (1 - d) x (1 - m) ] = {{ formatCurrency(item.maxGmvNlvSide) }}</span>
                 </div>
               </div>
-              <div class="breakdown-stage stage-2">
-                <div class="stage-header">Stage-2 (drop d = 10%)</div>
-                <div class="stage-item">
-                  <div class="item-label">Max GMV that survives start-reducing threshold</div>
-                  <div class="item-value">
-                    <span class="formula">Gmax = NLV / [ 1 - (1 - d) x (1 - m) ] = {{ formatCurrency(item.maxGmvMaintenanceSide) }}</span>
-                  </div>
+              <div class="stage-item">
+                <div class="item-label">Max Maintenance margin (Before drop) to survive drop</div>
+                <div class="item-value">
+                  <span class="formula">Mk = Gmax x m = {{ formatCurrency(item.mkNlvSide) }}</span>
                 </div>
-                 <div class="stage-item">
-                  <div class="item-label">Max Maintenance margin (Before drop) to survive drop</div>
-                  <div class="item-value">
-                    <span class="formula">Mk = Gmax x m = {{ formatCurrency(item.mkMaintenanceSide) }}</span>
-                  </div>
+              </div>
+               <div class="stage-item">
+                <div class="item-label">Maintenance margin headroom</div>
+                <div class="item-value">
+                  <span class="formula">Mk - M = {{ formatCurrency(item.maintnanceMarginHeadroomNlvSide) }}</span>
                 </div>
-                 <div class="stage-item">
-                  <div class="item-label">Maintenance margin headroom</div>
-                  <div class="item-value">
-                    <span class="formula">Mk - M = {{ formatCurrency(item.maintnanceMarginHeadroomMaintenanceSide) }}</span>
-                  </div>
+              </div>
+               <div class="stage-item">
+                <div class="item-label">Add'l GMV allowed</div>
+                <div class="item-value">
+                  <span class="formula">(Mk - M) / m = {{ formatCurrency(item.addlGmvAllowedNlvSide) }}</span>
                 </div>
-                 <div class="stage-item">
-                  <div class="item-label">Add'l GMV allowed</div>
-                  <div class="item-value">
-                    <span class="formula">(Mk - M) / m = {{ formatCurrency(item.addlGmvAllowedMaintenanceSide) }}</span>
-                  </div>
+              </div>
+            </div>
+            <div class="breakdown-stage stage-2">
+              <div class="stage-header">Stage-2 (drop d = 10%)</div>
+              <div class="stage-item">
+                <div class="item-label">Max GMV that survives start-reducing threshold</div>
+                <div class="item-value">
+                  <span class="formula">Gmax = NLV / [ 1 - (1 - d) x (1 - m) ] = {{ formatCurrency(item.maxGmvMaintenanceSide) }}</span>
+                </div>
+              </div>
+               <div class="stage-item">
+                <div class="item-label">Max Maintenance margin (Before drop) to survive drop</div>
+                <div class="item-value">
+                  <span class="formula">Mk = Gmax x m = {{ formatCurrency(item.mkMaintenanceSide) }}</span>
+                </div>
+              </div>
+               <div class="stage-item">
+                <div class="item-label">Maintenance margin headroom</div>
+                <div class="item-value">
+                  <span class="formula">Mk - M = {{ formatCurrency(item.maintnanceMarginHeadroomMaintenanceSide) }}</span>
+                </div>
+              </div>
+               <div class="stage-item">
+                <div class="item-label">Add'l GMV allowed</div>
+                <div class="item-value">
+                  <span class="formula">(Mk - M) / m = {{ formatCurrency(item.addlGmvAllowedMaintenanceSide) }}</span>
                 </div>
               </div>
             </div>
@@ -574,6 +783,151 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+/* AG Grid Styles */
+.summary-grid {
+  margin-top: 1rem;
+  height: auto;
+  min-height: 200px;
+}
+
+.summary-ag-grid {
+  font-family: inherit;
+}
+
+:deep(.ag-header-cell) {
+  background: #f8f9fa;
+  border-bottom: 2px solid #dee2e6;
+  font-weight: 600;
+}
+
+:deep(.ag-cell) {
+  border-bottom: 1px solid #e9ecef;
+  padding: 0;
+}
+
+:deep(.ag-row:hover) {
+  background-color: #f8f9fa;
+}
+
+:deep(.number-cell) {
+  text-align: right;
+  font-weight: 600;
+}
+
+:deep(.negative) {
+  color: #dc3545;
+}
+
+:deep(.total-cell) {
+  font-weight: 700;
+  background-color: #f8f9fa;
+}
+
+:deep(.account-cell) {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+:deep(.account-name) {
+  font-weight: 600;
+  color: #1f2a37;
+  cursor: pointer;
+}
+
+:deep(.account-name:hover) {
+  color: #3b82f6;
+}
+
+:deep(.total-row .account-name) {
+  cursor: default;
+}
+
+:deep(.total-row .account-name:hover) {
+  color: #1f2a37;
+}
+
+:deep(.status-badge) {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 12px;
+  text-transform: uppercase;
+  align-self: flex-start;
+}
+
+:deep(.status-ok) {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+:deep(.status-stage1) {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+:deep(.status-stage2) {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+:deep(.cell-with-graph) {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+:deep(.cell-value) {
+  flex: 1;
+}
+
+:deep(.graph-btn) {
+  background: none;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  padding: 2px 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+:deep(.graph-btn:hover) {
+  background-color: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+:deep(.graph-btn.active) {
+  background-color: #dbeafe;
+  border-color: #3b82f6;
+  color: #1d4ed8;
+}
+
+:deep(.breakdown-btn) {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  display: block;
+  margin: 0 auto;
+}
+
+:deep(.breakdown-btn:hover) {
+  background: #2563eb;
+}
+
+/* Alternative approach - center the entire cell content */
+:deep(.ag-cell[col-id="actions"]) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+}
+
 /* Chart styles */
 .chart-section h4 {
   font-size: 1rem;
@@ -591,9 +945,102 @@ onBeforeUnmount(() => {
   height: 350px;
 }
 
+.graph-section {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.graph-loading, .graph-error, .graph-empty {
+  text-align: center;
+  padding: 2rem;
+  color: #6b7280;
+  font-style: italic;
+}
+
+.graph-error {
+  color: #dc2626;
+}
+
+/* Calculation breakdown styles */
+.calculation-breakdown {
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+}
+
+.breakdown-header {
+  margin-bottom: 1.5rem;
+}
+
+.breakdown-header div:first-child {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1f2a37;
+  margin-bottom: 0.5rem;
+}
+
+.breakdown-header div:last-child {
+  font-size: 0.9rem;
+  color: #6b7280;
+  font-style: italic;
+}
+
+.breakdown-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+.breakdown-stage {
+  padding: 1.5rem;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.stage-1 {
+  background-color: #fef3c7;
+  border-color: #f59e0b;
+}
+
+.stage-2 {
+  background-color: #fee2e2;
+  border-color: #ef4444;
+}
+
+.stage-header {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: #1f2a37;
+}
+
+.stage-item {
+  margin-bottom: 1rem;
+}
+
+.item-label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.25rem;
+}
+
+.item-value {
+  font-size: 0.85rem;
+}
+
+.formula {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  color: #1f2937;
+  font-weight: 600;
+}
+
 /* Keep all existing styles */
 .dashboard-container {
-  width: 100%;
   margin: 0 auto;
   padding: 2rem;
   background-color: #f5f6f8;
@@ -642,132 +1089,6 @@ onBeforeUnmount(() => {
   transform: scale(0.95);
 }
 
-.metric-row {
-  background-color: #ffffff;
-  border-radius: 8px;
-  padding: 1.5rem;
-  margin-bottom: 1rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.all-accounts-row {
-  background-color: #eef2f6;
-}
-
-.row-header-button-container {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-}
-
-.row-header {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #1f2a37;
-  margin: 0;
-  cursor: pointer;
-}
-
-.row-content {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2rem;
-  align-items: flex-start;
-}
-
-.metric-column {
-  display: flex;
-  flex-direction: column;
-}
-
-.metric-label {
-  font-size: 0.9rem;
-  color: #6b7280;
-  margin-bottom: 0.25rem;
-}
-
-.metric-value {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #1f2a37;
-  margin-bottom: 1rem;
-}
-
-.row-status {
-  font-size: 0.8rem;
-  font-weight: 600;
-  padding: 0.25rem 0.75rem;
-  border-radius: 20px;
-  text-transform: uppercase;
-  align-self: flex-start;
-  cursor: pointer;
-  border: none;
-  min-width: 100px;
-  text-align: center;
-}
-
-.row-status.ok {
-  background-color: #d1fae5;
-  color: #065f46;
-}
-
-.row-status.stage-2-exhausted {
-  background-color: #fee2e2;
-  color: #991b1b;
-}
-
-.row-status.stage-1-exhausted {
-  background-color: #fef3c7;
-  color: #92400e;
-}
-
-.metric-label-with-icon {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.graph-icon {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #6b7280;
-  padding: 4px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-
-.graph-icon:hover {
-  color: #3b82f6;
-  background-color: #f3f4f6;
-}
-
-.graph-icon.active {
-  color: #3b82f6;
-  background-color: #dbeafe;
-}
-
-.graph-section {
-  margin-top: 1.5rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid #e5e7eb;
-}
-
-.graph-loading, .graph-error, .graph-empty {
-  text-align: center;
-  padding: 2rem;
-  color: #6b7280;
-  font-style: italic;
-}
-
-.graph-error {
-  color: #dc2626;
-}
-
 .loading, .error {
   text-align: center;
   padding: 2rem;
@@ -788,61 +1109,6 @@ onBeforeUnmount(() => {
   100% { transform: rotate(360deg); }
 }
 
-.calculation-breakdown {
-  margin-top: 1.5rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid #e5e7eb;
-}
-
-.breakdown-header {
-  font-size: 0.9rem;
-  color: #6b7280;
-  margin-bottom: 1rem;
-}
-
-.breakdown-columns {
-  display: flex;
-  gap: 2rem;
-}
-
-.breakdown-stage {
-  flex: 1;
-  background-color: #f9fafb;
-  border-radius: 8px;
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-}
-
-.stage-header {
-  font-weight: 600;
-  color: #1f2a37;
-  font-size: 1.1rem;
-  margin-bottom: 1rem;
-}
-
-.stage-item {
-  margin-bottom: 1rem;
-}
-
-.item-label {
-  font-size: 0.9rem;
-  color: #6b7280;
-  margin-bottom: 0.25rem;
-}
-
-.item-value {
-  font-weight: 600;
-  color: #1f2a37;
-  line-height: 1.5;
-}
-
-.formula {
-  font-style: italic;
-  font-size: 0.9rem;
-  color: #4b5563;
-}
-
 .summary-link {
   color: #1f2a37;
   text-decoration: none;
@@ -852,5 +1118,15 @@ onBeforeUnmount(() => {
 .summary-link:hover {
   color: #3b82f6;
   text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .breakdown-columns {
+    grid-template-columns: 1fr;
+  }
+  
+  .summary-grid {
+    font-size: 0.875rem;
+  }
 }
 </style>
