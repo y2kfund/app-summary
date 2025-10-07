@@ -57,6 +57,39 @@ const breakdownVisibility: { [key: number]: boolean } = reactive({});
 // Add URL parameter tracking
 const selectedClientFromUrl = ref<string | null>(null)
 
+// Docker Container Control Types
+type ContainerState = {
+  isLoading: boolean
+  isStarting: boolean
+  isStopping: boolean
+  lastUpdated?: Date | null
+  online?: boolean
+  lastError?: string | null
+}
+
+type Notification = {
+  id: number
+  type: 'success' | 'error'
+  message: string
+}
+
+// Container states for each account (using container names as keys)
+const containerStates = reactive<Record<string, ContainerState>>({
+  'bansi': { isLoading: false, isStarting: false, isStopping: false },
+  'cis': { isLoading: false, isStarting: false, isStopping: false },
+  'hediye': { isLoading: false, isStarting: false, isStopping: false },
+  'ovlg': { isLoading: false, isStarting: false, isStopping: false },
+  'sc': { isLoading: false, isStarting: false, isStopping: false },
+  'stamp': { isLoading: false, isStarting: false, isStopping: false },
+  'vk': { isLoading: false, isStarting: false, isStopping: false }
+})
+
+// Notifications
+const notifications = ref<Notification[]>([])
+let notificationIdCounter = 0
+
+const DOCKER_CONTROL_URL = 'https://ibkr-docker-manage.aiworkspace.pro/docker_control.php'
+
 // Function to get URL parameters
 function getUrlParams() {
   const urlParams = new URLSearchParams(window.location.search)
@@ -685,6 +718,247 @@ function isGraphActive(accountId: number, type: 'nlv' | 'mm'): boolean {
   return graphVisibility[accountId]?.[type] || false
 }
 
+// Notification functions
+function showNotification(type: 'success' | 'error', message: string) {
+  const notification: Notification = {
+    id: ++notificationIdCounter,
+    type,
+    message
+  }
+  
+  notifications.value.push(notification)
+  
+  // Auto-remove after 4 seconds
+  setTimeout(() => {
+    removeNotification(notification.id)
+  }, 4000)
+}
+
+function removeNotification(id: number) {
+  const index = notifications.value.findIndex(n => n.id === id)
+  if (index > -1) {
+    notifications.value.splice(index, 1)
+  }
+}
+
+// Map account ID to container name
+function getContainerNameFromAccountId(accountId: number): string | null {
+  const mapping: Record<number, string> = {
+    1: 'bansi',
+    2: 'cis',
+    3: 'hediye',
+    4: 'ovlg',
+    5: 'sc',
+    6: 'stamp',
+    7: 'vk'
+  }
+  return mapping[accountId] || null
+}
+
+// Docker container control - Start Container
+async function startDockerContainer(containerName: string) {
+  const currentState = containerStates[containerName]
+  if (!currentState) {
+    console.error(`Container state not found for: ${containerName}`)
+    return
+  }
+
+  // Prevent multiple simultaneous requests
+  if (currentState.isLoading) return
+
+  const url = `${DOCKER_CONTROL_URL}?action=start&container_name=${containerName}`
+
+  // Set loading state
+  currentState.isLoading = true
+  currentState.isStarting = true
+
+  try {
+    console.log(`Starting container: ${containerName}`)
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    const data = await response.json()
+    console.log('Docker Start API Response:', data)
+
+    if (data.status === 'success') {
+      currentState.lastUpdated = new Date()
+      console.log(`Container ${containerName} started successfully`)
+      
+      // Show success notification
+      showNotification('success', `Container "${containerName}" started successfully!`)
+      
+      // Optional: Show the output for debugging
+      if (data.output) {
+        console.log('Start command output:', data.output)
+      }
+    } else {
+      throw new Error(data.message || `Failed to start container`)
+    }
+  } catch (error) {
+    console.error(`Error starting Docker container:`, error)
+    showNotification('error', `Failed to start container "${containerName}". Check console for details.`)
+  } finally {
+    // Clear loading state
+    currentState.isLoading = false
+    currentState.isStarting = false
+  }
+}
+
+// Docker container control - Stop Container
+async function stopDockerContainer(containerName: string) {
+  const currentState = containerStates[containerName]
+  if (!currentState) {
+    console.error(`Container state not found for: ${containerName}`)
+    return
+  }
+
+  // Prevent multiple simultaneous requests
+  if (currentState.isLoading) return
+
+  const url = `${DOCKER_CONTROL_URL}?action=stop&container_name=${containerName}`
+
+  // Set loading state
+  currentState.isLoading = true
+  currentState.isStopping = true
+  
+  try {
+    console.log(`Stopping container: ${containerName}`)
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    const data = await response.json()
+    console.log('Docker Stop API Response:', data)
+
+    if (data.status === 'success') {
+      currentState.lastUpdated = new Date()
+      console.log(`Container ${containerName} stopped successfully`)
+      
+      // Show success notification
+      showNotification('success', `Container "${containerName}" stopped successfully!`)
+      
+      // Optional: Show the output for debugging
+      if (data.output) {
+        console.log('Stop command output:', data.output)
+      }
+    } else {
+      throw new Error(data.message || `Failed to stop container`)
+    }
+  } catch (error) {
+    console.error(`Error stopping Docker container:`, error)
+    showNotification('error', `Failed to stop container "${containerName}". Check console for details.`)
+  } finally {
+    // Clear loading state
+    currentState.isLoading = false
+    currentState.isStopping = false
+  }
+}
+
+// Container polling functionality
+const POLL_INTERVAL = 10_000  // 10 seconds
+const POLL_TIMEOUT = 8000     // 8 seconds timeout
+const pollTimers: number[] = []
+
+// Helper function to get container state
+function getContainerState(accountId: number): ContainerState {
+  const containerName = getContainerNameFromAccountId(accountId)
+  if (!containerName) {
+    return { isLoading: false, isStarting: false, isStopping: false, online: false }
+  }
+  return containerStates[containerName] || { isLoading: false, isStarting: false, isStopping: false, online: false }
+}
+
+// Check container status by polling its API endpoint
+async function checkContainer(accountId: number) {
+  const containerName = getContainerNameFromAccountId(accountId)
+  if (!containerName) return
+  
+  const state = containerStates[containerName]
+  if (!state || state.isLoading) return
+  
+  state.isLoading = true
+  state.lastError = null
+
+  // Build the URL based on container name
+  const url = containerName === 'vk' 
+    ? `https://ibkr.vk.to5001.aiworkspace.pro/api/maintenance`
+    : `https://ibkr.${containerName}.to5001.aiworkspace.pro/api/maintenance`
+  
+  const ac = new AbortController()
+  const timeoutId = setTimeout(() => ac.abort(), POLL_TIMEOUT)
+
+  try {
+    const res = await fetch(url, { signal: ac.signal })
+    if (!res.ok) {
+      state.online = false
+      state.lastError = `HTTP ${res.status}`
+    } else {
+      const data = await res.json().catch(() => null)
+      if (data && data.account_id) {
+        state.online = true
+        state.lastUpdated = data.timestamp ? new Date(data.timestamp) : new Date()
+        state.lastError = null
+      } else {
+        state.online = false
+        state.lastError = 'missing account_id'
+      }
+    }
+  } catch (err: any) {
+    state.online = false
+    state.lastError = String(err?.message || err)
+  } finally {
+    clearTimeout(timeoutId)
+    state.isLoading = false
+  }
+}
+
+// Schedule polling for all containers
+function scheduleContainerPolling() {
+  // Clear existing timers
+  pollTimers.forEach(t => clearInterval(t))
+  pollTimers.length = 0
+
+  // Account IDs 1-7
+  const accountIds = [1, 2, 3, 4, 5, 6, 7]
+  
+  accountIds.forEach((accountId, idx) => {
+    // Initial staggered check
+    setTimeout(() => { checkContainer(accountId) }, idx * 500)
+    
+    // Repeated checks
+    const timerId = setInterval(() => checkContainer(accountId), POLL_INTERVAL)
+    pollTimers.push(timerId as unknown as number)
+  })
+}
+
+// Get container display info (online status and formatted last update)
+function getContainerDisplay(accountId: number) {
+  const state = getContainerState(accountId)
+  return {
+    online: !!state.online,
+    lastUpdatedText: state.lastUpdated ? state.lastUpdated.toLocaleString() : '',
+    isLoading: state.isLoading,
+    lastError: state.lastError
+  }
+}
+
 // Update your existing onMounted to add global click listener
 onMounted(() => {
   selectedClientFromUrl.value = getUrlParams()
@@ -696,6 +970,9 @@ onMounted(() => {
 
   // Add global click listener to hide context menu
   document.addEventListener('click', hideContextMenu)
+  
+  // Start container polling
+  scheduleContainerPolling()
 })
 
 // Update your existing onBeforeUnmount
@@ -706,10 +983,30 @@ onBeforeUnmount(() => {
   
   // Remove global click listener
   document.removeEventListener('click', hideContextMenu)
+  
+  // Stop container polling
+  pollTimers.forEach(t => clearInterval(t))
+  pollTimers.length = 0
 })
 </script>
 
 <template>
+  <!-- Success/Error Notifications -->
+  <div class="notification-container">
+    <div 
+      v-for="notification in notifications" 
+      :key="notification.id"
+      class="notification"
+      :class="notification.type"
+    >
+      <div class="notification-content">
+        <span class="notification-icon">{{ notification.type === 'success' ? '✅' : '❌' }}</span>
+        <span class="notification-message">{{ notification.message }}</span>
+      </div>
+      <button class="notification-close" @click="removeNotification(notification.id)">×</button>
+    </div>
+  </div>
+
   <div class="dashboard-container">
     <div v-if="q.isLoading.value" class="loading">
       <div class="loading-spinner"></div>
@@ -797,12 +1094,80 @@ onBeforeUnmount(() => {
           class="calculation-breakdown"
         >
           <div class="breakdown-header">
-            <div>Calculation breakdown for Client{{ calculatedMetrics?.findIndex(m => {
-              const mAccountId = typeof m.nlv_internal_account_id === 'string' ? parseInt(m.nlv_internal_account_id) : m.nlv_internal_account_id;
-              const itemAccountId = typeof item.nlv_internal_account_id === 'string' ? parseInt(item.nlv_internal_account_id) : item.nlv_internal_account_id;
-              return mAccountId === itemAccountId;
-            }) + 1 }}:</div>
-            <div>Assumptions: maintenance margin (m) = 30%</div>
+            <div class="breakdown-header-left">
+              <div>
+                Calculation breakdown for Client{{ calculatedMetrics?.findIndex(m => {
+                const mAccountId = typeof m.nlv_internal_account_id === 'string' ? parseInt(m.nlv_internal_account_id) : m.nlv_internal_account_id;
+                const itemAccountId = typeof item.nlv_internal_account_id === 'string' ? parseInt(item.nlv_internal_account_id) : item.nlv_internal_account_id;
+                return mAccountId === itemAccountId;
+                }) + 1 }}:
+              </div>
+              <div>Assumptions: maintenance margin (m) = 30%</div>
+            </div>
+            
+            <div class="breakdown-header-right">
+              <div class="docker-control-section">
+                <div class="container-status-badge" :class="getContainerDisplay(calculatedMetrics?.findIndex(m => {
+                  const mAccountId = typeof m.nlv_internal_account_id === 'string' ? parseInt(m.nlv_internal_account_id) : m.nlv_internal_account_id;
+                  const itemAccountId = typeof item.nlv_internal_account_id === 'string' ? parseInt(item.nlv_internal_account_id) : item.nlv_internal_account_id;
+                  return mAccountId === itemAccountId;
+                }) + 1).online ? 'status-online' : 'status-offline'">
+                  {{ getContainerDisplay(calculatedMetrics?.findIndex(m => {
+                    const mAccountId = typeof m.nlv_internal_account_id === 'string' ? parseInt(m.nlv_internal_account_id) : m.nlv_internal_account_id;
+                    const itemAccountId = typeof item.nlv_internal_account_id === 'string' ? parseInt(item.nlv_internal_account_id) : item.nlv_internal_account_id;
+                    return mAccountId === itemAccountId;
+                  }) + 1).online ? '🟢 Online' : '🔴 Offline' }}
+                </div>
+                
+                <button 
+                  v-if="!getContainerDisplay(calculatedMetrics?.findIndex(m => {
+                    const mAccountId = typeof m.nlv_internal_account_id === 'string' ? parseInt(m.nlv_internal_account_id) : m.nlv_internal_account_id;
+                    const itemAccountId = typeof item.nlv_internal_account_id === 'string' ? parseInt(item.nlv_internal_account_id) : item.nlv_internal_account_id;
+                    return mAccountId === itemAccountId;
+                  }) + 1).online"
+                  class="docker-control-btn start-btn"
+                  :disabled="containerStates[getContainerNameFromAccountId(calculatedMetrics?.findIndex(m => {
+                    const mAccountId = typeof m.nlv_internal_account_id === 'string' ? parseInt(m.nlv_internal_account_id) : m.nlv_internal_account_id;
+                    const itemAccountId = typeof item.nlv_internal_account_id === 'string' ? parseInt(item.nlv_internal_account_id) : item.nlv_internal_account_id;
+                    return mAccountId === itemAccountId;
+                  }) + 1)]?.isLoading"
+                  @click.stop="startDockerContainer(getContainerNameFromAccountId(calculatedMetrics?.findIndex(m => {
+                    const mAccountId = typeof m.nlv_internal_account_id === 'string' ? parseInt(m.nlv_internal_account_id) : m.nlv_internal_account_id;
+                    const itemAccountId = typeof item.nlv_internal_account_id === 'string' ? parseInt(item.nlv_internal_account_id) : item.nlv_internal_account_id;
+                    return mAccountId === itemAccountId;
+                  }) + 1))"
+                >
+                  <span v-if="containerStates[getContainerNameFromAccountId(calculatedMetrics?.findIndex(m => {
+                    const mAccountId = typeof m.nlv_internal_account_id === 'string' ? parseInt(m.nlv_internal_account_id) : m.nlv_internal_account_id;
+                    const itemAccountId = typeof item.nlv_internal_account_id === 'string' ? parseInt(item.nlv_internal_account_id) : item.nlv_internal_account_id;
+                    return mAccountId === itemAccountId;
+                  }) + 1)]?.isStarting">Starting...</span>
+                  <span v-else>▶️ Start Container</span>
+                </button>
+                
+                <button 
+                  v-else
+                  class="docker-control-btn stop-btn"
+                  :disabled="containerStates[getContainerNameFromAccountId(calculatedMetrics?.findIndex(m => {
+                    const mAccountId = typeof m.nlv_internal_account_id === 'string' ? parseInt(m.nlv_internal_account_id) : m.nlv_internal_account_id;
+                    const itemAccountId = typeof item.nlv_internal_account_id === 'string' ? parseInt(item.nlv_internal_account_id) : item.nlv_internal_account_id;
+                    return mAccountId === itemAccountId;
+                  }) + 1)]?.isLoading"
+                  @click.stop="stopDockerContainer(getContainerNameFromAccountId(calculatedMetrics?.findIndex(m => {
+                    const mAccountId = typeof m.nlv_internal_account_id === 'string' ? parseInt(m.nlv_internal_account_id) : m.nlv_internal_account_id;
+                    const itemAccountId = typeof item.nlv_internal_account_id === 'string' ? parseInt(item.nlv_internal_account_id) : item.nlv_internal_account_id;
+                    return mAccountId === itemAccountId;
+                  }) + 1))"
+                >
+                  <span v-if="containerStates[getContainerNameFromAccountId(calculatedMetrics?.findIndex(m => {
+                    const mAccountId = typeof m.nlv_internal_account_id === 'string' ? parseInt(m.nlv_internal_account_id) : m.nlv_internal_account_id;
+                    const itemAccountId = typeof item.nlv_internal_account_id === 'string' ? parseInt(item.nlv_internal_account_id) : item.nlv_internal_account_id;
+                    return mAccountId === itemAccountId;
+                  }) + 1)]?.isStopping">Stopping...</span>
+                  <span v-else>⏹️ Stop Container</span>
+                </button>
+              </div>
+            </div>
           </div>
           <div class="breakdown-columns">
             <div class="breakdown-stage stage-1">
@@ -902,6 +1267,92 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+/* Notification System */
+.notification-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 400px;
+}
+
+.notification {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  animation: slideIn 0.3s ease-out;
+  min-width: 300px;
+  backdrop-filter: blur(10px);
+}
+
+.notification.success {
+  background: rgba(40, 167, 69, 0.95);
+  color: white;
+  border-left: 4px solid #28a745;
+}
+
+.notification.error {
+  background: rgba(220, 53, 69, 0.95);
+  color: white;
+  border-left: 4px solid #dc3545;
+}
+
+.notification-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.notification-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.notification-message {
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.notification-close {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+}
+
+.notification-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
 /* AG Grid Styles */
 .summary-grid {
   margin-top: 1rem;
@@ -1122,19 +1573,125 @@ onBeforeUnmount(() => {
 
 .breakdown-header {
   margin-bottom: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 2rem;
 }
 
-.breakdown-header div:first-child {
+.breakdown-header-left {
+  flex: 1;
+}
+
+.breakdown-header-left div:first-child {
   font-size: 1.1rem;
   font-weight: 600;
   color: #1f2a37;
   margin-bottom: 0.5rem;
 }
 
-.breakdown-header div:last-child {
+.breakdown-header-left div:last-child {
   font-size: 0.9rem;
   color: #6b7280;
   font-style: italic;
+}
+
+.breakdown-header-right {
+  display: flex;
+  align-items: flex-start;
+}
+
+.docker-control-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.container-status-badge {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.container-status-badge.status-online {
+  background-color: #d1fae5;
+  color: #065f46;
+  border: 1px solid #10b981;
+}
+
+.container-status-badge.status-offline {
+  background-color: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #ef4444;
+}
+
+/* Docker control button styles */
+.docker-control-btn {
+  --success-clr: #28a745;
+  --success-hover: #218838;
+  --success-active: #1e7e34;
+  --danger-clr: #dc3545;
+  --danger-hover: #bb2d3b;
+  --danger-active: #a52834;
+  
+  background: transparent;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  border-radius: 6px;
+  cursor: pointer;
+  line-height: 1.2;
+  transition: color 0.15s, background-color 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+  min-width: 140px;
+  border: 1px solid;
+  white-space: nowrap;
+}
+
+.docker-control-btn.start-btn {
+  border-color: var(--success-clr);
+  color: var(--success-clr);
+}
+
+.docker-control-btn.start-btn:hover:not(:disabled) {
+  background: var(--success-clr);
+  color: white;
+}
+
+.docker-control-btn.start-btn:active {
+  background: var(--success-active);
+  border-color: var(--success-active);
+  color: white;
+  transform: translateY(1px);
+}
+
+.docker-control-btn.stop-btn {
+  border-color: var(--danger-clr);
+  color: var(--danger-clr);
+}
+
+.docker-control-btn.stop-btn:hover:not(:disabled) {
+  background: var(--danger-clr);
+  color: white;
+}
+
+.docker-control-btn.stop-btn:active {
+  background: var(--danger-active);
+  border-color: var(--danger-active);
+  color: white;
+  transform: translateY(1px);
+}
+
+.docker-control-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.docker-control-btn:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.35);
 }
 
 .breakdown-columns {
