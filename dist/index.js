@@ -46043,6 +46043,7 @@ const l1 = /* @__PURE__ */ a1("line", un), d1 = { class: "dashboard-container" }
         valueFormatter: (F) => m(F.value),
         cellClass: "number-cell",
         headerClass: "graph-header",
+        flex: 1,
         cellRenderer: (F) => {
           var V;
           if (F.data.isTotal)
@@ -46051,8 +46052,7 @@ const l1 = /* @__PURE__ */ a1("line", un), d1 = { class: "dashboard-container" }
           return (V = r[P]) == null || V.nlv, `<div class="cell-with-graph">
         <span class="cell-value">${m(F.value)}</span>
       </div>`;
-        },
-        width: 100
+        }
       },
       {
         headerName: "Maintenance Margin",
@@ -46060,6 +46060,7 @@ const l1 = /* @__PURE__ */ a1("line", un), d1 = { class: "dashboard-container" }
         valueFormatter: (F) => m(F.value),
         cellClass: "number-cell",
         headerClass: "graph-header",
+        flex: 1,
         cellRenderer: (F) => {
           var V;
           if (F.data.isTotal)
@@ -46068,8 +46069,7 @@ const l1 = /* @__PURE__ */ a1("line", un), d1 = { class: "dashboard-container" }
           return (V = r[P]) == null || V.mm, `<div class="cell-with-graph">
         <span class="cell-value">${m(F.value)}</span>
       </div>`;
-        },
-        width: 100
+        }
       },
       {
         headerName: "Add'l GMV to Stop-Reducing Cap",
@@ -46079,7 +46079,7 @@ const l1 = /* @__PURE__ */ a1("line", un), d1 = { class: "dashboard-container" }
           const P = "number-cell";
           return F.data.isTotal ? `${P} total-cell` : F.value < 0 ? `${P} negative` : P;
         },
-        width: 100
+        flex: 1
       },
       {
         headerName: "Add'l GMV to Start-Reducing Cap",
@@ -46089,7 +46089,7 @@ const l1 = /* @__PURE__ */ a1("line", un), d1 = { class: "dashboard-container" }
           const P = "number-cell";
           return F.data.isTotal ? `${P} total-cell` : F.value < 0 ? `${P} negative` : P;
         },
-        width: 100
+        flex: 1
       }
     ]);
     function Z(F) {
@@ -46365,7 +46365,7 @@ const l1 = /* @__PURE__ */ a1("line", un), d1 = { class: "dashboard-container" }
   for (const [s, o] of t)
     i[s] = o;
   return i;
-}, lH = /* @__PURE__ */ eH(J1, [["__scopeId", "data-v-26fdf6b3"]]);
+}, lH = /* @__PURE__ */ eH(J1, [["__scopeId", "data-v-0a3e81d2"]]);
 export {
   lH as Summary,
   lH as default

@@ -460,6 +460,7 @@ const columnDefs = computed<ColDef[]>(() => [
     valueFormatter: (params) => formatCurrency(params.value),
     cellClass: 'number-cell',
     headerClass: 'graph-header',
+    flex: 1,
     cellRenderer: (params) => {
       if (params.data.isTotal) {
         return `<span class="cell-value total-cell">${formatCurrency(params.value)}</span>`;
@@ -468,15 +469,10 @@ const columnDefs = computed<ColDef[]>(() => [
         ? parseInt(params.data.nlv_internal_account_id) 
         : params.data.nlv_internal_account_id;
       const isActive = graphVisibility[accountId]?.nlv;
-      /*return `<div class="cell-with-graph">
-        <span class="cell-value">${formatCurrency(params.value)}</span>
-        <button class="graph-btn ${isActive ? 'active' : ''}" data-account="${accountId}" data-type="nlv">📊</button>
-      </div>`;*/
       return `<div class="cell-with-graph">
         <span class="cell-value">${formatCurrency(params.value)}</span>
       </div>`;
-    },
-    width: 100
+    }
   },
   {
     headerName: 'Maintenance Margin',
@@ -484,6 +480,7 @@ const columnDefs = computed<ColDef[]>(() => [
     valueFormatter: (params) => formatCurrency(params.value),
     cellClass: 'number-cell',
     headerClass: 'graph-header',
+    flex: 1,
     cellRenderer: (params) => {
       if (params.data.isTotal) {
         return `<span class="cell-value total-cell">${formatCurrency(params.value)}</span>`;
@@ -492,15 +489,10 @@ const columnDefs = computed<ColDef[]>(() => [
         ? parseInt(params.data.nlv_internal_account_id) 
         : params.data.nlv_internal_account_id;
       const isActive = graphVisibility[accountId]?.mm;
-      /*return `<div class="cell-with-graph">
-        <span class="cell-value">${formatCurrency(params.value)}</span>
-        <button class="graph-btn ${isActive ? 'active' : ''}" data-account="${accountId}" data-type="mm">📊</button>
-      </div>`;*/
       return `<div class="cell-with-graph">
         <span class="cell-value">${formatCurrency(params.value)}</span>
       </div>`;
-    },
-    width: 100
+    }
   },
   {
     headerName: "Add'l GMV to Stop-Reducing Cap",
@@ -511,7 +503,7 @@ const columnDefs = computed<ColDef[]>(() => [
       if (params.data.isTotal) return `${baseClass} total-cell`;
       return params.value < 0 ? `${baseClass} negative` : baseClass;
     },
-    width: 100
+    flex: 1
   },
   {
     headerName: "Add'l GMV to Start-Reducing Cap",
@@ -522,7 +514,7 @@ const columnDefs = computed<ColDef[]>(() => [
       if (params.data.isTotal) return `${baseClass} total-cell`;
       return params.value < 0 ? `${baseClass} negative` : baseClass;
     },
-    width: 100
+    flex: 1
   },
 ]);
 
