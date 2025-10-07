@@ -422,7 +422,7 @@ const columnDefs = computed<ColDef[]>(() => [
     headerName: 'Account',
     field: 'account',
     valueGetter: (params) => {
-      if (params.data.isTotal) return 'All Accounts (Total)';
+      if (params.data.isTotal) return 'All Accounts';
       const accountId = typeof params.data.nlv_internal_account_id === 'string' 
         ? parseInt(params.data.nlv_internal_account_id) 
         : params.data.nlv_internal_account_id;
@@ -435,7 +435,7 @@ const columnDefs = computed<ColDef[]>(() => [
       return `Client${index + 1}`;
     },
     pinned: 'left',
-    width: 150,
+    width: 95,
     cellRenderer: (params) => {
       if (params.data.isTotal) {
         return `<div class="account-cell total-row">
@@ -462,7 +462,8 @@ const columnDefs = computed<ColDef[]>(() => [
     headerClass: 'graph-header',
     cellRenderer: (params) => {
       if (params.data.isTotal) {
-        return `<span class="cell-value total-cell">${formatCurrency(params.value)}</span>`;
+        return `<span class="cell-value total-cell">${formatCurrency(params.value)}</span>
+        <button style="width: 25px; height: 16px;border: none; background: none;" class="graph-btn" disabled>&nbsp;</button>`;
       }
       const accountId = typeof params.data.nlv_internal_account_id === 'string' 
         ? parseInt(params.data.nlv_internal_account_id) 
@@ -473,7 +474,7 @@ const columnDefs = computed<ColDef[]>(() => [
         <button class="graph-btn ${isActive ? 'active' : ''}" data-account="${accountId}" data-type="nlv">📊</button>
       </div>`;
     },
-    width: 200
+    width: 120
   },
   {
     headerName: 'Maintenance Margin',
@@ -483,7 +484,8 @@ const columnDefs = computed<ColDef[]>(() => [
     headerClass: 'graph-header',
     cellRenderer: (params) => {
       if (params.data.isTotal) {
-        return `<span class="cell-value total-cell">${formatCurrency(params.value)}</span>`;
+        return `<span class="cell-value total-cell">${formatCurrency(params.value)}</span>
+        <button style="width: 25px; height: 16px;border: none; background: none;" class="graph-btn" disabled>&nbsp;</button>`;
       }
       const accountId = typeof params.data.nlv_internal_account_id === 'string' 
         ? parseInt(params.data.nlv_internal_account_id) 
@@ -494,7 +496,7 @@ const columnDefs = computed<ColDef[]>(() => [
         <button class="graph-btn ${isActive ? 'active' : ''}" data-account="${accountId}" data-type="mm">📊</button>
       </div>`;
     },
-    width: 220
+    width: 120
   },
   {
     headerName: "Add'l GMV to Stop-Reducing Cap",
@@ -505,7 +507,7 @@ const columnDefs = computed<ColDef[]>(() => [
       if (params.data.isTotal) return `${baseClass} total-cell`;
       return params.value < 0 ? `${baseClass} negative` : baseClass;
     },
-    width: 250
+    width: 120
   },
   {
     headerName: "Add'l GMV to Start-Reducing Cap",
@@ -516,7 +518,7 @@ const columnDefs = computed<ColDef[]>(() => [
       if (params.data.isTotal) return `${baseClass} total-cell`;
       return params.value < 0 ? `${baseClass} negative` : baseClass;
     },
-    width: 250
+    width: 120
   },
   {
     headerName: 'Actions',
