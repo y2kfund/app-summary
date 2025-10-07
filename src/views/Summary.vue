@@ -462,19 +462,21 @@ const columnDefs = computed<ColDef[]>(() => [
     headerClass: 'graph-header',
     cellRenderer: (params) => {
       if (params.data.isTotal) {
-        return `<span class="cell-value total-cell">${formatCurrency(params.value)}</span>
-        <button style="width: 25px; height: 16px;border: none; background: none;" class="graph-btn" disabled>&nbsp;</button>`;
+        return `<span class="cell-value total-cell">${formatCurrency(params.value)}</span>`;
       }
       const accountId = typeof params.data.nlv_internal_account_id === 'string' 
         ? parseInt(params.data.nlv_internal_account_id) 
         : params.data.nlv_internal_account_id;
       const isActive = graphVisibility[accountId]?.nlv;
-      return `<div class="cell-with-graph">
+      /*return `<div class="cell-with-graph">
         <span class="cell-value">${formatCurrency(params.value)}</span>
         <button class="graph-btn ${isActive ? 'active' : ''}" data-account="${accountId}" data-type="nlv">📊</button>
+      </div>`;*/
+      return `<div class="cell-with-graph">
+        <span class="cell-value">${formatCurrency(params.value)}</span>
       </div>`;
     },
-    width: 120
+    width: 100
   },
   {
     headerName: 'Maintenance Margin',
@@ -484,19 +486,21 @@ const columnDefs = computed<ColDef[]>(() => [
     headerClass: 'graph-header',
     cellRenderer: (params) => {
       if (params.data.isTotal) {
-        return `<span class="cell-value total-cell">${formatCurrency(params.value)}</span>
-        <button style="width: 25px; height: 16px;border: none; background: none;" class="graph-btn" disabled>&nbsp;</button>`;
+        return `<span class="cell-value total-cell">${formatCurrency(params.value)}</span>`;
       }
       const accountId = typeof params.data.nlv_internal_account_id === 'string' 
         ? parseInt(params.data.nlv_internal_account_id) 
         : params.data.nlv_internal_account_id;
       const isActive = graphVisibility[accountId]?.mm;
-      return `<div class="cell-with-graph">
+      /*return `<div class="cell-with-graph">
         <span class="cell-value">${formatCurrency(params.value)}</span>
         <button class="graph-btn ${isActive ? 'active' : ''}" data-account="${accountId}" data-type="mm">📊</button>
+      </div>`;*/
+      return `<div class="cell-with-graph">
+        <span class="cell-value">${formatCurrency(params.value)}</span>
       </div>`;
     },
-    width: 120
+    width: 100
   },
   {
     headerName: "Add'l GMV to Stop-Reducing Cap",
@@ -507,7 +511,7 @@ const columnDefs = computed<ColDef[]>(() => [
       if (params.data.isTotal) return `${baseClass} total-cell`;
       return params.value < 0 ? `${baseClass} negative` : baseClass;
     },
-    width: 120
+    width: 100
   },
   {
     headerName: "Add'l GMV to Start-Reducing Cap",
@@ -518,22 +522,8 @@ const columnDefs = computed<ColDef[]>(() => [
       if (params.data.isTotal) return `${baseClass} total-cell`;
       return params.value < 0 ? `${baseClass} negative` : baseClass;
     },
-    width: 120
+    width: 100
   },
-  {
-    headerName: 'Actions',
-    field: 'actions',
-    width: 120,
-    cellRenderer: (params) => {
-      if (params.data.isTotal) return '';
-      const accountId = typeof params.data.nlv_internal_account_id === 'string' 
-        ? parseInt(params.data.nlv_internal_account_id) 
-        : params.data.nlv_internal_account_id;
-      return `<button class="breakdown-btn" data-account="${accountId}">Details</button>`;
-    },
-    sortable: false,
-    filter: false
-  }
 ]);
 
 // Grid ready handler
@@ -547,6 +537,9 @@ function onGridReady(event: any) {
     gridElement.addEventListener('click', (event: Event) => {
       const target = event.target as HTMLElement;
       
+      // Hide context menu on any click
+      hideContextMenu()
+      
       if (target.classList.contains('graph-btn')) {
         const accountId = parseInt(target.getAttribute('data-account') || '0');
         const type = target.getAttribute('data-type') as 'nlv' | 'mm';
@@ -557,28 +550,6 @@ function onGridReady(event: any) {
         }
       }
       
-      if (target.classList.contains('breakdown-btn')) {
-        const accountId = parseInt(target.getAttribute('data-account') || '0');
-        console.log('🔧 Details button clicked for account:', accountId);
-        
-        // Find the item by nlv_internal_account_id (comparing as numbers)
-        const item = calculatedMetrics.value?.find(m => {
-          const mAccountId = typeof m.nlv_internal_account_id === 'string' 
-            ? parseInt(m.nlv_internal_account_id) 
-            : m.nlv_internal_account_id;
-          return mAccountId === accountId;
-        });
-        
-        console.log('📋 Found item for breakdown:', item);
-        
-        if (item) {
-          console.log('🎯 Toggling breakdown for account ID:', accountId);
-          toggleBreakdown(accountId);
-        } else {
-          console.warn('⚠️ No item found for account ID:', accountId);
-        }
-      }
-
       if (target.classList.contains('account-name') && !target.closest('.total-row')) {
         // For account name clicks, we need to find the account ID differently
         // Let's get it from the row data instead of trying to navigate DOM
@@ -591,6 +562,27 @@ function onGridReady(event: any) {
             : rowNode.data.nlv_internal_account_id;
           if (accountId) {
             updateClientInRoute(accountId);
+          }
+        }
+      }
+    });
+
+    // Add right-click event listener
+    gridElement.addEventListener('contextmenu', (event: Event) => {
+      const target = event.target as HTMLElement;
+      const row = target.closest('.ag-row');
+      
+      if (row) {
+        const rowIndex = row.getAttribute('row-index');
+        if (rowIndex !== null) {
+          const rowNode = gridApi.value?.getDisplayedRowAtIndex(parseInt(rowIndex));
+          if (rowNode?.data && !rowNode.data.isTotal) {
+            const accountId = typeof rowNode.data.nlv_internal_account_id === 'string' 
+              ? parseInt(rowNode.data.nlv_internal_account_id) 
+              : rowNode.data.nlv_internal_account_id;
+            if (accountId) {
+              showContextMenu(event as MouseEvent, accountId);
+            }
           }
         }
       }
@@ -619,11 +611,109 @@ const gridRowData = computed(() => {
   return data;
 });
 
-// Ensure the cleanup function is called when the component is unmounted
+// Add context menu state after your existing reactive variables
+const contextMenu = ref({
+  visible: false,
+  x: 0,
+  y: 0,
+  accountId: null as number | null
+})
+
+// Add these missing context menu functions
+function showContextMenu(event: MouseEvent, accountId: number) {
+  event.preventDefault()
+  contextMenu.value = {
+    visible: true,
+    x: event.clientX,
+    y: event.clientY,
+    accountId
+  }
+}
+
+function hideContextMenu() {
+  contextMenu.value.visible = false
+}
+
+function handleDetails() {
+  if (contextMenu.value.accountId) {
+    const accountId = contextMenu.value.accountId
+    console.log('🔧 Details clicked for account:', accountId)
+    
+    // Find the item by nlv_internal_account_id (comparing as numbers)
+    const item = calculatedMetrics.value?.find(m => {
+      const mAccountId = typeof m.nlv_internal_account_id === 'string' 
+        ? parseInt(m.nlv_internal_account_id) 
+        : m.nlv_internal_account_id;
+      return mAccountId === accountId;
+    });
+    
+    console.log('📋 Found item for breakdown:', item);
+    
+    if (item) {
+      console.log('🎯 Toggling breakdown for account ID:', accountId);
+      toggleBreakdown(accountId);
+    } else {
+      console.warn('⚠️ No item found for account ID:', accountId);
+    }
+  }
+  hideContextMenu()
+}
+
+// Add new context menu handlers for graphs
+function handleNlvGraph() {
+  if (contextMenu.value.accountId) {
+    const accountId = contextMenu.value.accountId
+    console.log('📊 NLV Graph clicked for account:', accountId)
+    toggleGraph(accountId, 'nlv')
+    
+    // Refresh the grid to update button states
+    if (gridApi.value && typeof gridApi.value.refreshCells === 'function') {
+      gridApi.value.refreshCells();
+    }
+  }
+  hideContextMenu()
+}
+
+function handleMaintenanceGraph() {
+  if (contextMenu.value.accountId) {
+    const accountId = contextMenu.value.accountId
+    console.log('📊 Maintenance Margin Graph clicked for account:', accountId)
+    toggleGraph(accountId, 'mm')
+    
+    // Refresh the grid to update button states
+    if (gridApi.value && typeof gridApi.value.refreshCells === 'function') {
+      gridApi.value.refreshCells();
+    }
+  }
+  hideContextMenu()
+}
+
+// Helper function to check if a graph is active
+function isGraphActive(accountId: number, type: 'nlv' | 'mm'): boolean {
+  return graphVisibility[accountId]?.[type] || false
+}
+
+// Update your existing onMounted to add global click listener
+onMounted(() => {
+  selectedClientFromUrl.value = getUrlParams()
+  
+  // Listen for popstate events (browser back/forward)
+  window.addEventListener('popstate', () => {
+    selectedClientFromUrl.value = getUrlParams()
+  })
+
+  // Add global click listener to hide context menu
+  document.addEventListener('click', hideContextMenu)
+})
+
+// Update your existing onBeforeUnmount
 onBeforeUnmount(() => {
   if (q._cleanup) {
     q._cleanup()
   }
+  
+  // Remove global click listener
+  document.removeEventListener('click', hideContextMenu)
 })
 </script>
 
@@ -779,6 +869,41 @@ onBeforeUnmount(() => {
             </div>
           </div>
         </div>
+
+        <!-- Context Menu -->
+        <div 
+          v-if="contextMenu.visible" 
+          class="context-menu"
+          :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }"
+          @click.stop
+        >
+          <div class="context-menu-item" @click="handleDetails">
+            <span class="context-menu-icon">📋</span>
+            Details
+          </div>
+          
+          <div class="context-menu-separator"></div>
+          
+          <div 
+            class="context-menu-item" 
+            :class="{ active: contextMenu.accountId && isGraphActive(contextMenu.accountId, 'nlv') }"
+            @click="handleNlvGraph"
+          >
+            <span class="context-menu-icon">📊</span>
+            <span>NLV Graph</span>
+            <span v-if="contextMenu.accountId && isGraphActive(contextMenu.accountId, 'nlv')" class="active-indicator">●</span>
+          </div>
+          
+          <div 
+            class="context-menu-item" 
+            :class="{ active: contextMenu.accountId && isGraphActive(contextMenu.accountId, 'mm') }"
+            @click="handleMaintenanceGraph"
+          >
+            <span class="context-menu-icon">📈</span>
+            <span>Maintenance Margin Graph</span>
+            <span v-if="contextMenu.accountId && isGraphActive(contextMenu.accountId, 'mm')" class="active-indicator">●</span>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -905,29 +1030,58 @@ onBeforeUnmount(() => {
   color: #1d4ed8;
 }
 
-:deep(.breakdown-btn) {
-  background: #3b82f6;
-  color: white;
-  border: none;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-  display: block;
-  margin: 0 auto;
+/* Context Menu Styles */
+.context-menu {
+  position: fixed;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  padding: 4px 0;
+  z-index: 1000;
+  min-width: 180px;
 }
 
-:deep(.breakdown-btn:hover) {
-  background: #2563eb;
-}
-
-/* Alternative approach - center the entire cell content */
-:deep(.ag-cell[col-id="actions"]) {
+.context-menu-item {
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 8px;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #374151;
+  transition: background-color 0.15s ease;
+  position: relative;
+}
+
+.context-menu-item:hover {
+  background-color: #f3f4f6;
+}
+
+.context-menu-item.active {
+  background-color: #dbeafe;
+  color: #1d4ed8;
+}
+
+.context-menu-item.active:hover {
+  background-color: #bfdbfe;
+}
+
+.context-menu-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.context-menu-separator {
+  height: 1px;
+  background-color: #e5e7eb;
+  margin: 4px 0;
+}
+
+.active-indicator {
+  margin-left: auto;
+  color: #10b981;
+  font-size: 12px;
 }
 
 /* Chart styles */
@@ -1130,5 +1284,12 @@ onBeforeUnmount(() => {
   .summary-grid {
     font-size: 0.875rem;
   }
+}
+</style>
+
+<style>
+.ag-cell-value.ag-cell.ag-cell-not-inline-editing.ag-cell-normal-height.number-cell {
+    border-right: var(--ag-pinned-column-border);
+    padding: 0 2px;
 }
 </style>
