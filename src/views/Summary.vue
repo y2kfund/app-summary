@@ -592,13 +592,16 @@ function onGridReady(event: any) {
       }
     });
 
-    // Add right-click event listener
+    // Update right-click event listener to detect column
     gridElement.addEventListener('contextmenu', (event: Event) => {
       const target = event.target as HTMLElement;
+      const cell = target.closest('.ag-cell');
       const row = target.closest('.ag-row');
       
-      if (row) {
+      if (row && cell) {
         const rowIndex = row.getAttribute('row-index');
+        const colId = cell.getAttribute('col-id');
+        
         if (rowIndex !== null) {
           const rowNode = gridApi.value?.getDisplayedRowAtIndex(parseInt(rowIndex));
           if (rowNode?.data && !rowNode.data.isTotal) {
@@ -606,7 +609,7 @@ function onGridReady(event: any) {
               ? parseInt(rowNode.data.nlv_internal_account_id) 
               : rowNode.data.nlv_internal_account_id;
             if (accountId) {
-              showContextMenu(event as MouseEvent, accountId);
+              showContextMenu(event as MouseEvent, accountId, colId || undefined);
             }
           }
         }
@@ -641,17 +644,30 @@ const contextMenu = ref({
   visible: false,
   x: 0,
   y: 0,
-  accountId: null as number | null
+  accountId: null as number | null,
+  columnId: null as string | null, // Add column tracking
+  fetchedAt: null as string | null // Add fetched_at tracking
 })
 
 // Add these missing context menu functions
-function showContextMenu(event: MouseEvent, accountId: number) {
+function showContextMenu(event: MouseEvent, accountId: number, columnId?: string) {
   event.preventDefault()
+  
+  // Find the row data to get fetched_at_val
+  const rowData = calculatedMetrics.value?.find(m => {
+    const mAccountId = typeof m.nlv_internal_account_id === 'string' 
+      ? parseInt(m.nlv_internal_account_id) 
+      : m.nlv_internal_account_id;
+    return mAccountId === accountId;
+  });
+  
   contextMenu.value = {
     visible: true,
     x: event.clientX,
     y: event.clientY,
-    accountId
+    accountId,
+    columnId: columnId || null,
+    fetchedAt: rowData?.fetched_at_val || null
   }
 }
 
@@ -988,6 +1004,83 @@ onBeforeUnmount(() => {
   pollTimers.forEach(t => clearInterval(t))
   pollTimers.length = 0
 })
+
+// Add computed property to determine which menu items to show
+const contextMenuItems = computed(() => {
+  const items = [];
+  
+  // Always show Details
+  items.push({
+    icon: '📋',
+    label: 'Details',
+    action: 'details'
+  });
+  
+  // Show NLV Graph only if clicked on NLV column
+  if (contextMenu.value.columnId === 'nlv_val') {
+    items.push({
+      icon: '📊',
+      label: 'NLV Graph',
+      action: 'nlv-graph',
+      active: contextMenu.value.accountId ? isGraphActive(contextMenu.value.accountId, 'nlv') : false
+    });
+  }
+  
+  // Show Maintenance Margin Graph only if clicked on maintenance margin column
+  if (contextMenu.value.columnId === 'maintenance_val') {
+    items.push({
+      icon: '📈',
+      label: 'Maintenance Margin Graph',
+      action: 'mm-graph',
+      active: contextMenu.value.accountId ? isGraphActive(contextMenu.value.accountId, 'mm') : false
+    });
+  }
+  
+  return items;
+});
+
+// Add context menu handler function
+function handleContextMenuAction(action: string) {
+  if (!contextMenu.value.accountId) return;
+  
+  switch (action) {
+    case 'details':
+      handleDetails();
+      break;
+    case 'nlv-graph':
+      handleNlvGraph();
+      break;
+    case 'mm-graph':
+      handleMaintenanceGraph();
+      break;
+  }
+}
+
+// Add a helper function to convert UTC to PST
+function formatToPST(utcTimestamp: string | null): string {
+  if (!utcTimestamp) return 'N/A';
+  
+  try {
+    const date = new Date(utcTimestamp);
+    
+    // Convert to PST using Intl.DateTimeFormat
+    const pstFormatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Los_Angeles', // PST/PDT timezone
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false // 24-hour format
+    });
+    
+    return pstFormatter.format(date);
+  } catch (error) {
+    console.error('Error formatting timestamp:', error);
+    return 'Invalid Date';
+  }
+}
 </script>
 
 <template>
@@ -1227,38 +1320,34 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <!-- Context Menu -->
+        <!-- Updated Context Menu -->
         <div 
           v-if="contextMenu.visible" 
           class="context-menu"
           :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }"
           @click.stop
         >
-          <div class="context-menu-item" @click="handleDetails">
-            <span class="context-menu-icon">📋</span>
-            Details
+          <div 
+            v-for="(item, index) in contextMenuItems" 
+            :key="item.action"
+            class="context-menu-item" 
+            :class="{ active: item.active }"
+            @click="handleContextMenuAction(item.action)"
+          >
+            <span class="context-menu-icon">{{ item.icon }}</span>
+            <span>{{ item.label }}</span>
+            <span v-if="item.active" class="active-indicator">●</span>
           </div>
           
-          <div class="context-menu-separator"></div>
+          <!-- Add separator before fetched_at if there are menu items -->
+          <div v-if="contextMenuItems.length > 0" class="context-menu-separator"></div>
           
-          <div 
-            class="context-menu-item" 
-            :class="{ active: contextMenu.accountId && isGraphActive(contextMenu.accountId, 'nlv') }"
-            @click="handleNlvGraph"
-          >
-            <span class="context-menu-icon">📊</span>
-            <span>NLV Graph</span>
-            <span v-if="contextMenu.accountId && isGraphActive(contextMenu.accountId, 'nlv')" class="active-indicator">●</span>
-          </div>
-          
-          <div 
-            class="context-menu-item" 
-            :class="{ active: contextMenu.accountId && isGraphActive(contextMenu.accountId, 'mm') }"
-            @click="handleMaintenanceGraph"
-          >
-            <span class="context-menu-icon">📈</span>
-            <span>Maintenance Margin Graph</span>
-            <span v-if="contextMenu.accountId && isGraphActive(contextMenu.accountId, 'mm')" class="active-indicator">●</span>
+          <!-- Show fetched_at_val at the bottom -->
+          <div class="context-menu-info">
+            <span class="context-menu-label">Fetched:</span>
+            <span class="context-menu-value">
+              {{ formatToPST(contextMenu.fetchedAt) }} (PST)
+            </span>
           </div>
         </div>
       </div>
@@ -1482,7 +1571,7 @@ onBeforeUnmount(() => {
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
   padding: 4px 0;
   z-index: 1000;
-  min-width: 180px;
+  min-width: 200px;
 }
 
 .context-menu-item {
@@ -1525,6 +1614,27 @@ onBeforeUnmount(() => {
   margin-left: auto;
   color: #10b981;
   font-size: 12px;
+}
+
+/* New styles for fetched_at info */
+.context-menu-info {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 12px;
+  background-color: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.context-menu-label {
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.context-menu-value {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  color: #374151;
 }
 
 /* Chart styles */
