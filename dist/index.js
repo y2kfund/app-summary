@@ -38770,9 +38770,9 @@ function kI(e, t) {
       });
       if (c) throw c;
       let u = d || [];
-      return l.length > 0 && u.length > 0 ? u[0] && "internal_account_id" in u[0] ? (console.log("🔒 Applying access filter for NLV/Margin data"), u = u.filter(
-        (h) => h.internal_account_id && l.includes(h.internal_account_id)
-      )) : console.warn("⚠️ NLV/Margin data missing internal_account_id field, cannot filter by access") : console.log("🔓 No access filter applied - showing all NLV/Margin data"), console.log("✅ NLV/Margin query success:", {
+      return l.length > 0 && u.length > 0 ? u[0] && "nlv_internal_account_id" in u[0] ? (console.log("🔒 Applying access filter for NLV/Margin data"), u = u.filter(
+        (h) => h.nlv_internal_account_id && l.includes(h.nlv_internal_account_id)
+      )) : console.warn("⚠️ NLV/Margin data missing nlv_internal_account_id field, cannot filter by access") : console.log("🔓 No access filter applied - showing all NLV/Margin data"), console.log("✅ NLV/Margin query success:", {
         totalRows: (d == null ? void 0 : d.length) || 0,
         filteredRows: u.length,
         filtered: l.length > 0
@@ -43996,11 +43996,11 @@ function Wu() {
 function Wf(e, t, i = t) {
   e.lineCap = q(i.borderCapStyle, t.borderCapStyle), e.setLineDash(q(i.borderDash, t.borderDash)), e.lineDashOffset = q(i.borderDashOffset, t.borderDashOffset), e.lineJoin = q(i.borderJoinStyle, t.borderJoinStyle), e.lineWidth = q(i.borderWidth, t.borderWidth), e.strokeStyle = q(i.borderColor, t.borderColor);
 }
-function e1(e, t, i) {
+function e_(e, t, i) {
   e.lineTo(i.x, i.y);
 }
-function t1(e) {
-  return e.stepped ? Hk : e.tension || e.cubicInterpolationMode === "monotone" ? Bk : e1;
+function t_(e) {
+  return e.stepped ? Hk : e.tension || e.cubicInterpolationMode === "monotone" ? Bk : e_;
 }
 function zf(e, t, i = {}) {
   const s = e.length, { start: o = 0, end: n = s - 1 } = i, { start: r, end: a } = t, l = Math.max(o, r), d = Math.min(n, a), c = o < r && n < r || o > a && n > a;
@@ -44011,14 +44011,14 @@ function zf(e, t, i = {}) {
     ilen: d < l && !c ? s + d - l : d - l
   };
 }
-function i1(e, t, i, s) {
-  const { points: o, options: n } = t, { count: r, start: a, loop: l, ilen: d } = zf(o, i, s), c = t1(n);
+function i_(e, t, i, s) {
+  const { points: o, options: n } = t, { count: r, start: a, loop: l, ilen: d } = zf(o, i, s), c = t_(n);
   let { move: u = !0, reverse: h } = s || {}, g, p, f;
   for (g = 0; g <= d; ++g)
     p = o[(a + (h ? d - g : g)) % r], !p.skip && (u ? (e.moveTo(p.x, p.y), u = !1) : c(e, f, p, h, n.stepped), f = p);
   return l && (p = o[(a + (h ? d : 0)) % r], c(e, f, p, h, n.stepped)), !!l;
 }
-function s1(e, t, i, s) {
+function s_(e, t, i, s) {
   const o = t.points, { count: n, start: r, ilen: a } = zf(o, i, s), { move: l = !0, reverse: d } = s || {};
   let c = 0, u = 0, h, g, p, f, m, C;
   const v = (b) => (r + (d ? a - b : b)) % n, y = () => {
@@ -44034,16 +44034,16 @@ function s1(e, t, i, s) {
 }
 function cl(e) {
   const t = e.options, i = t.borderDash && t.borderDash.length;
-  return !e._decimated && !e._loop && !t.tension && t.cubicInterpolationMode !== "monotone" && !t.stepped && !i ? s1 : i1;
+  return !e._decimated && !e._loop && !t.tension && t.cubicInterpolationMode !== "monotone" && !t.stepped && !i ? s_ : i_;
 }
-function o1(e) {
+function o_(e) {
   return e.stepped ? CL : e.tension || e.cubicInterpolationMode === "monotone" ? vL : bi;
 }
-function n1(e, t, i, s) {
+function n_(e, t, i, s) {
   let o = t._path;
   o || (o = t._path = new Path2D(), t.path(o, i, s) && o.closePath()), Wf(e, t.options), e.stroke(o);
 }
-function r1(e, t, i, s) {
+function r_(e, t, i, s) {
   const { segments: o, options: n } = t, r = cl(t);
   for (const a of o)
     Wf(e, n, a.style), e.beginPath(), r(e, t, a, {
@@ -44051,9 +44051,9 @@ function r1(e, t, i, s) {
       end: i + s - 1
     }) && e.closePath(), e.stroke();
 }
-const a1 = typeof Path2D == "function";
-function l1(e, t, i, s) {
-  a1 && !t.options.segment ? n1(e, t, i, s) : r1(e, t, i, s);
+const a_ = typeof Path2D == "function";
+function l_(e, t, i, s) {
+  a_ && !t.options.segment ? n_(e, t, i, s) : r_(e, t, i, s);
 }
 class js extends Ui {
   constructor(t) {
@@ -44091,7 +44091,7 @@ class js extends Ui {
     });
     if (!r.length)
       return;
-    const a = [], l = o1(s);
+    const a = [], l = o_(s);
     let d, c;
     for (d = 0, c = r.length; d < c; ++d) {
       const { start: u, end: h } = r[d], g = n[u], p = n[h];
@@ -44120,7 +44120,7 @@ class js extends Ui {
   }
   draw(t, i, s, o) {
     const n = this.options || {};
-    (this.points || []).length && n.borderWidth && (t.save(), l1(t, this, s, o), t.restore()), this.animated && (this._pointsUpdated = !1, this._path = void 0);
+    (this.points || []).length && n.borderWidth && (t.save(), l_(t, this, s, o), t.restore()), this.animated && (this._pointsUpdated = !1, this._path = void 0);
   }
 }
 $(js, "id", "line"), $(js, "defaults", {
@@ -44220,7 +44220,7 @@ const Uu = (e, t) => {
     boxHeight: i,
     itemHeight: Math.max(t, i)
   };
-}, d1 = (e, t) => e !== null && t !== null && e.datasetIndex === t.datasetIndex && e.index === t.index;
+}, d_ = (e, t) => e !== null && t !== null && e.datasetIndex === t.datasetIndex && e.index === t.index;
 class $u extends Ui {
   constructor(t) {
     super(), this._added = !1, this.legendHitBoxes = [], this._hoveredItem = null, this.doughnutMode = !1, this.chart = t.chart, this.options = t.options, this.ctx = t.ctx, this.legendItems = void 0, this.columnSizes = void 0, this.lineWidths = void 0, this.maxHeight = void 0, this.maxWidth = void 0, this.top = void 0, this.bottom = void 0, this.left = void 0, this.right = void 0, this.height = void 0, this.width = void 0, this._margins = void 0, this.position = void 0, this.weight = void 0, this.fullSize = void 0;
@@ -44270,7 +44270,7 @@ class $u extends Ui {
     const { ctx: n, maxHeight: r, options: { labels: { padding: a } } } = this, l = this.legendHitBoxes = [], d = this.columnSizes = [], c = r - t;
     let u = a, h = 0, g = 0, p = 0, f = 0;
     return this.legendItems.forEach((m, C) => {
-      const { itemWidth: v, itemHeight: y } = c1(s, i, n, m, o);
+      const { itemWidth: v, itemHeight: y } = c_(s, i, n, m, o);
       C > 0 && g + y + 2 * a > c && (u += h + a, d.push({
         width: h,
         height: g
@@ -44398,11 +44398,11 @@ class $u extends Ui {
   }
   handleEvent(t) {
     const i = this.options;
-    if (!g1(t.type, i))
+    if (!g_(t.type, i))
       return;
     const s = this._getLegendItemAt(t.x, t.y);
     if (t.type === "mousemove" || t.type === "mouseout") {
-      const o = this._hoveredItem, n = d1(o, s);
+      const o = this._hoveredItem, n = d_(o, s);
       o && !n && ae(i.onLeave, [
         t,
         o,
@@ -44419,18 +44419,18 @@ class $u extends Ui {
     ], this);
   }
 }
-function c1(e, t, i, s, o) {
-  const n = u1(s, e, t, i), r = h1(o, s, t.lineHeight);
+function c_(e, t, i, s, o) {
+  const n = u_(s, e, t, i), r = h_(o, s, t.lineHeight);
   return {
     itemWidth: n,
     itemHeight: r
   };
 }
-function u1(e, t, i, s) {
+function u_(e, t, i, s) {
   let o = e.text;
   return o && typeof o != "string" && (o = o.reduce((n, r) => n.length > r.length ? n : r)), t + i.size / 2 + s.measureText(o).width;
 }
-function h1(e, t, i) {
+function h_(e, t, i) {
   let s = e;
   return typeof t.text != "string" && (s = Uf(t, i)), s;
 }
@@ -44438,10 +44438,10 @@ function Uf(e, t) {
   const i = e.text ? e.text.length : 0;
   return t * i;
 }
-function g1(e, t) {
+function g_(e, t) {
   return !!((e === "mousemove" || e === "mouseout") && (t.onHover || t.onLeave) || t.onClick && (e === "click" || e === "mouseup"));
 }
-var p1 = {
+var p_ = {
   id: "legend",
   _element: $u,
   start(e, t, i) {
@@ -44573,7 +44573,7 @@ class $f extends Ui {
     });
   }
 }
-function f1(e, t) {
+function f_(e, t) {
   const i = new $f({
     ctx: e.ctx,
     options: t,
@@ -44581,11 +44581,11 @@ function f1(e, t) {
   });
   et.configure(e, i, t), et.addBox(e, i), e.titleBlock = i;
 }
-var m1 = {
+var m_ = {
   id: "title",
   _element: $f,
   start(e, t, i) {
-    f1(e, i);
+    f_(e, i);
   },
   stop(e) {
     const t = e.titleBlock;
@@ -44663,7 +44663,7 @@ function It(e) {
 `) > -1 ? e.split(`
 `) : e;
 }
-function C1(e, t) {
+function C_(e, t) {
   const { element: i, datasetIndex: s, index: o } = t, n = e.getDatasetMeta(s).controller, { label: r, value: a } = n.getLabelAndValue(o);
   return {
     chart: e,
@@ -44696,39 +44696,39 @@ function Ku(e, t) {
     height: f
   };
 }
-function v1(e, t) {
+function v_(e, t) {
   const { y: i, height: s } = t;
   return i < s / 2 ? "top" : i > e.height - s / 2 ? "bottom" : "center";
 }
-function w1(e, t, i, s) {
+function w_(e, t, i, s) {
   const { x: o, width: n } = s, r = i.caretSize + i.caretPadding;
   if (e === "left" && o + n + r > t.width || e === "right" && o - n - r < 0)
     return !0;
 }
-function b1(e, t, i, s) {
+function b_(e, t, i, s) {
   const { x: o, width: n } = i, { width: r, chartArea: { left: a, right: l } } = e;
   let d = "center";
-  return s === "center" ? d = o <= (a + l) / 2 ? "left" : "right" : o <= n / 2 ? d = "left" : o >= r - n / 2 && (d = "right"), w1(d, e, t, i) && (d = "center"), d;
+  return s === "center" ? d = o <= (a + l) / 2 ? "left" : "right" : o <= n / 2 ? d = "left" : o >= r - n / 2 && (d = "right"), w_(d, e, t, i) && (d = "center"), d;
 }
 function ju(e, t, i) {
-  const s = i.yAlign || t.yAlign || v1(e, i);
+  const s = i.yAlign || t.yAlign || v_(e, i);
   return {
-    xAlign: i.xAlign || t.xAlign || b1(e, t, i, s),
+    xAlign: i.xAlign || t.xAlign || b_(e, t, i, s),
     yAlign: s
   };
 }
-function y1(e, t) {
+function y_(e, t) {
   let { x: i, width: s } = e;
   return t === "right" ? i -= s : t === "center" && (i -= s / 2), i;
 }
-function S1(e, t, i) {
+function S_(e, t, i) {
   let { y: s, height: o } = e;
   return t === "top" ? s += i : t === "bottom" ? s -= o + i : s -= o / 2, s;
 }
 function qu(e, t, i, s) {
   const { caretSize: o, caretPadding: n, cornerRadius: r } = e, { xAlign: a, yAlign: l } = i, d = o + n, { topLeft: c, topRight: u, bottomLeft: h, bottomRight: g } = ao(r);
-  let p = y1(t, a);
-  const f = S1(t, l, d);
+  let p = y_(t, a);
+  const f = S_(t, l, d);
   return l === "center" ? a === "left" ? p += d : a === "right" && (p -= d) : a === "left" ? p -= Math.max(c, h) + o : a === "right" && (p += Math.max(u, g) + o), {
     x: Je(p, 0, s.width - t.width),
     y: Je(f, 0, s.height - t.height)
@@ -44741,7 +44741,7 @@ function un(e, t, i) {
 function Yu(e) {
   return ft([], It(e));
 }
-function R1(e, t, i) {
+function R_(e, t, i) {
   return zi(e, {
     tooltip: t,
     tooltipItems: i,
@@ -44823,7 +44823,7 @@ class ul extends Ui {
     return o._cacheable && (this._cachedAnimations = Object.freeze(n)), n;
   }
   getContext() {
-    return this.$context || (this.$context = R1(this.chart.getContext(), this, this._tooltipItems));
+    return this.$context || (this.$context = R_(this.chart.getContext(), this, this._tooltipItems));
   }
   getTitle(t, i) {
     const { callbacks: s } = i, o = Ne(s, "beforeTitle", this, t), n = Ne(s, "title", this, t), r = Ne(s, "afterTitle", this, t);
@@ -44856,7 +44856,7 @@ class ul extends Ui {
     const i = this._active, s = this.chart.data, o = [], n = [], r = [];
     let a = [], l, d;
     for (l = 0, d = i.length; l < d; ++l)
-      a.push(C1(this.chart, i[l]));
+      a.push(C_(this.chart, i[l]));
     return t.filter && (a = a.filter((c, u, h) => t.filter(c, u, h, s))), t.itemSort && (a = a.sort((c, u) => t.itemSort(c, u, s))), te(a, (c) => {
       const u = Qu(t.callbacks, c);
       o.push(Ne(u, "labelColor", this, c)), n.push(Ne(u, "labelPointStyle", this, c)), r.push(Ne(u, "labelTextColor", this, c));
@@ -45041,7 +45041,7 @@ class ul extends Ui {
   }
 }
 $(ul, "positioners", qs);
-var x1 = {
+var x_ = {
   id: "tooltip",
   _element: ul,
   positioners: qs,
@@ -45157,18 +45157,18 @@ var x1 = {
     "interaction"
   ]
 };
-const F1 = (e, t, i, s) => (typeof t == "string" ? (i = e.push(t) - 1, s.unshift({
+const F_ = (e, t, i, s) => (typeof t == "string" ? (i = e.push(t) - 1, s.unshift({
   index: i,
   label: t
 })) : isNaN(t) && (i = null), i);
-function P1(e, t, i, s) {
+function P_(e, t, i, s) {
   const o = e.indexOf(t);
   if (o === -1)
-    return F1(e, t, i, s);
+    return F_(e, t, i, s);
   const n = e.lastIndexOf(t);
   return o !== n ? i : o;
 }
-const E1 = (e, t) => e === null ? null : Je(Math.round(e), 0, t);
+const E_ = (e, t) => e === null ? null : Je(Math.round(e), 0, t);
 function Xu(e) {
   const t = this.getLabels();
   return e >= 0 && e < t.length ? t[e] : e;
@@ -45191,7 +45191,7 @@ class hl extends Ps {
     if (ne(t))
       return null;
     const s = this.getLabels();
-    return i = isFinite(i) && s[i] === t ? i : P1(s, t, q(i, t), this._addedLabels), E1(i, s.length - 1);
+    return i = isFinite(i) && s[i] === t ? i : P_(s, t, q(i, t), this._addedLabels), E_(i, s.length - 1);
   }
   determineDataLimits() {
     const { minDefined: t, maxDefined: i } = this.getUserBounds();
@@ -45233,7 +45233,7 @@ $(hl, "id", "category"), $(hl, "defaults", {
     callback: Xu
   }
 });
-function D1(e, t) {
+function D_(e, t) {
   const i = [], { bounds: o, step: n, min: r, max: a, precision: l, count: d, maxTicks: c, maxDigits: u, includeBounds: h } = e, g = n || 1, p = c - 1, { min: f, max: m } = t, C = !ne(r), v = !ne(a), y = !ne(d), b = (m - f) / (u + 1);
   let w = iu((m - f) / p / g) * g, S, x, T, D;
   if (w < 1e-14 && !C && !v)
@@ -45269,7 +45269,7 @@ function Zu(e, t, { horizontal: i, minRotation: s }) {
   const o = Ri(s), n = (i ? Math.sin(o) : Math.cos(o)) || 1e-3, r = 0.75 * t * ("" + e).length;
   return Math.min(t / n, r);
 }
-class T1 extends Ps {
+class T_ extends Ps {
   constructor(t) {
     super(t), this.start = void 0, this.end = void 0, this._startValue = void 0, this._endValue = void 0, this._valueRange = 0;
   }
@@ -45314,7 +45314,7 @@ class T1 extends Ps {
       horizontal: this.isHorizontal(),
       minRotation: i.minRotation || 0,
       includeBounds: i.includeBounds !== !1
-    }, n = this._range || this, r = D1(o, n);
+    }, n = this._range || this, r = D_(o, n);
     return t.bounds === "ticks" && pk(r, this, "value"), t.reverse ? (r.reverse(), this.start = this.max, this.end = this.min) : (this.start = this.min, this.end = this.max), r;
   }
   configure() {
@@ -45330,7 +45330,7 @@ class T1 extends Ps {
     return wf(t, this.chart.options.locale, this.options.ticks.format);
   }
 }
-class gl extends T1 {
+class gl extends T_ {
   determineDataLimits() {
     const { min: t, max: i } = this.getMinMax(!0);
     this.min = st(t) ? t : 0, this.max = st(i) ? i : 1, this.handleTickRangeOptions();
@@ -45416,7 +45416,7 @@ function th(e, t, i, s) {
   }
   return We[o - 1];
 }
-function M1(e, t, i, s, o) {
+function M_(e, t, i, s, o) {
   for (let n = We.length - 1; n >= We.indexOf(i); n--) {
     const r = We[n];
     if (Sr[r].common && e._adapter.diff(o, s, r) >= t - 1)
@@ -45424,7 +45424,7 @@ function M1(e, t, i, s, o) {
   }
   return We[i ? We.indexOf(i) : 0];
 }
-function A1(e) {
+function A_(e) {
   for (let t = We.indexOf(e) + 1, i = We.length; t < i; ++t)
     if (Sr[We[t]].common)
       return We[t];
@@ -45437,7 +45437,7 @@ function ih(e, t, i) {
     e[n] = !0;
   }
 }
-function I1(e, t, i, s) {
+function I_(e, t, i, s) {
   const o = e._adapter, n = +o.startOf(t[0].value, s), r = t[t.length - 1].value;
   let a, l;
   for (a = n; a <= r; a = +o.add(a, 1, s))
@@ -45452,7 +45452,7 @@ function sh(e, t, i) {
       value: a,
       major: !1
     });
-  return n === 0 || !i ? s : I1(e, s, o, i);
+  return n === 0 || !i ? s : I_(e, s, o, i);
 }
 class rr extends Ps {
   constructor(t) {
@@ -45500,7 +45500,7 @@ class rr extends Ps {
     const t = this.options, i = t.time, s = t.ticks, o = s.source === "labels" ? this.getLabelTimestamps() : this._generate();
     t.bounds === "ticks" && o.length && (this.min = this._userMin || o[0], this.max = this._userMax || o[o.length - 1]);
     const n = this.min, r = this.max, a = bk(o, n, r);
-    return this._unit = i.unit || (s.autoSkip ? th(i.minUnit, this.min, this.max, this._getLabelCapacity(n)) : M1(this, a.length, i.minUnit, this.min, this.max)), this._majorUnit = !s.major.enabled || this._unit === "year" ? void 0 : A1(this._unit), this.initOffsets(o), t.reverse && a.reverse(), sh(this, a, this._majorUnit);
+    return this._unit = i.unit || (s.autoSkip ? th(i.minUnit, this.min, this.max, this._getLabelCapacity(n)) : M_(this, a.length, i.minUnit, this.min, this.max)), this._majorUnit = !s.major.enabled || this._unit === "year" ? void 0 : A_(this._unit), this.initOffsets(o), t.reverse && a.reverse(), sh(this, a, this._majorUnit);
   }
   afterAutoSkip() {
     this.options.offsetAfterAutoskip && this.initOffsets(this.ticks.map((t) => +t.value));
@@ -45696,14 +45696,14 @@ const jf = {
     type: String,
     default: void 0
   }
-}, k1 = {
+}, k_ = {
   ariaLabel: {
     type: String
   },
   ariaDescribedby: {
     type: String
   }
-}, L1 = {
+}, L_ = {
   type: {
     type: String,
     required: !0
@@ -45714,18 +45714,18 @@ const jf = {
     // No delay by default
   },
   ...jf,
-  ...k1
-}, O1 = hm[0] === "2" ? (e, t) => Object.assign(e, {
+  ...k_
+}, O_ = hm[0] === "2" ? (e, t) => Object.assign(e, {
   attrs: t
 }) : (e, t) => Object.assign(e, t);
 function Qi(e) {
   return pl(e) ? co(e) : e;
 }
-function _1(e) {
+function __(e) {
   let t = arguments.length > 1 && arguments[1] !== void 0 ? arguments[1] : e;
   return pl(t) ? new Proxy(e, {}) : e;
 }
-function H1(e, t) {
+function H_(e, t) {
   const i = e.options;
   i && t && Object.assign(i, t);
 }
@@ -45741,15 +45741,15 @@ function Yf(e, t, i) {
     } : (s.push(n), Object.assign(n, o), n);
   });
 }
-function B1(e, t) {
+function B_(e, t) {
   const i = {
     labels: [],
     datasets: []
   };
   return qf(i, e.labels), Yf(i, e.datasets, t), i;
 }
-const G1 = Ao({
-  props: L1,
+const G_ = Ao({
+  props: L_,
   setup(e, t) {
     let { expose: i, slots: s } = t;
     const o = Le(null), n = ch(null);
@@ -45758,7 +45758,7 @@ const G1 = Ao({
     });
     const r = () => {
       if (!o.value) return;
-      const { type: d, data: c, options: u, plugins: h, datasetIdKey: g } = e, p = B1(c, g), f = _1(p, c);
+      const { type: d, data: c, options: u, plugins: h, datasetIdKey: g } = e, p = B_(c, g), f = __(p, c);
       n.value = new yr(o.value, {
         type: d,
         data: f,
@@ -45786,7 +45786,7 @@ const G1 = Ao({
       let m = !1;
       if (u) {
         const C = Qi(u), v = Qi(g);
-        C && C !== v && (H1(f, C), m = !0);
+        C && C !== v && (H_(f, C), m = !0);
       }
       if (h) {
         const C = Qi(h.labels), v = Qi(p.labels), y = Qi(h.datasets), b = Qi(p.datasets);
@@ -45809,7 +45809,7 @@ const G1 = Ao({
     ]);
   }
 });
-function V1(e, t) {
+function V_(e, t) {
   return yr.register(t), Ao({
     props: jf,
     setup(i, s) {
@@ -45819,7 +45819,7 @@ function V1(e, t) {
       };
       return o({
         chart: n
-      }), () => ba(G1, O1({
+      }), () => ba(G_, O_({
         ref: r
       }, {
         type: e,
@@ -45828,34 +45828,34 @@ function V1(e, t) {
     }
   });
 }
-const N1 = /* @__PURE__ */ V1("line", xn), W1 = { class: "notification-container" }, z1 = { class: "notification-content" }, U1 = { class: "notification-icon" }, $1 = { class: "notification-message" }, K1 = ["onClick"], j1 = { class: "dashboard-container" }, q1 = {
+const N_ = /* @__PURE__ */ V_("line", xn), W_ = { class: "notification-container" }, z_ = { class: "notification-content" }, U_ = { class: "notification-icon" }, $_ = { class: "notification-message" }, K_ = ["onClick"], j_ = { class: "dashboard-container" }, q_ = {
   key: 0,
   class: "loading"
-}, Y1 = {
+}, Y_ = {
   key: 1,
   class: "error"
-}, Q1 = { key: 2 }, X1 = { class: "metric-block" }, Z1 = { class: "block-header" }, J1 = { key: 1 }, e_ = { class: "ag-theme-alpine summary-grid" }, t_ = {
+}, Q_ = { key: 2 }, X_ = { class: "metric-block" }, Z_ = { class: "block-header" }, J_ = { key: 1 }, e1 = { class: "ag-theme-alpine summary-grid" }, t1 = {
   key: 0,
   class: "graph-section"
-}, i_ = {
+}, i1 = {
   key: 0,
   class: "graph-loading"
-}, s_ = {
+}, s1 = {
   key: 1,
   class: "graph-error"
-}, o_ = {
+}, o1 = {
   key: 2,
   class: "chart-section"
-}, n_ = { class: "chart-container" }, r_ = {
+}, n1 = { class: "chart-container" }, r1 = {
   key: 3,
   class: "graph-empty"
-}, a_ = { class: "breakdown-header" }, l_ = { class: "breakdown-header-left" }, d_ = { class: "breakdown-header-right" }, c_ = { class: "docker-control-section" }, u_ = ["disabled", "onClick"], h_ = { key: 0 }, g_ = { key: 1 }, p_ = ["disabled", "onClick"], f_ = { key: 0 }, m_ = { key: 1 }, C_ = { class: "breakdown-columns" }, v_ = { class: "breakdown-stage stage-1" }, w_ = { class: "stage-item" }, b_ = { class: "item-value" }, y_ = { class: "formula" }, S_ = { class: "stage-item" }, R_ = { class: "item-value" }, x_ = { class: "formula" }, F_ = { class: "stage-item" }, P_ = { class: "item-value" }, E_ = { class: "formula" }, D_ = { class: "stage-item" }, T_ = { class: "item-value" }, M_ = { class: "formula" }, A_ = { class: "breakdown-stage stage-2" }, I_ = { class: "stage-item" }, k_ = { class: "item-value" }, L_ = { class: "formula" }, O_ = { class: "stage-item" }, __ = { class: "item-value" }, H_ = { class: "formula" }, B_ = { class: "stage-item" }, G_ = { class: "item-value" }, V_ = { class: "formula" }, N_ = { class: "stage-item" }, W_ = { class: "item-value" }, z_ = { class: "formula" }, U_ = ["onClick"], $_ = { class: "context-menu-icon" }, K_ = {
+}, a1 = { class: "breakdown-header" }, l1 = { class: "breakdown-header-left" }, d1 = { class: "breakdown-header-right" }, c1 = { class: "docker-control-section" }, u1 = ["disabled", "onClick"], h1 = { key: 0 }, g1 = { key: 1 }, p1 = ["disabled", "onClick"], f1 = { key: 0 }, m1 = { key: 1 }, C1 = { class: "breakdown-columns" }, v1 = { class: "breakdown-stage stage-1" }, w1 = { class: "stage-item" }, b1 = { class: "item-value" }, y1 = { class: "formula" }, S1 = { class: "stage-item" }, R1 = { class: "item-value" }, x1 = { class: "formula" }, F1 = { class: "stage-item" }, P1 = { class: "item-value" }, E1 = { class: "formula" }, D1 = { class: "stage-item" }, T1 = { class: "item-value" }, M1 = { class: "formula" }, A1 = { class: "breakdown-stage stage-2" }, I1 = { class: "stage-item" }, k1 = { class: "item-value" }, L1 = { class: "formula" }, O1 = { class: "stage-item" }, _1 = { class: "item-value" }, H1 = { class: "formula" }, B1 = { class: "stage-item" }, G1 = { class: "item-value" }, V1 = { class: "formula" }, N1 = { class: "stage-item" }, W1 = { class: "item-value" }, z1 = { class: "formula" }, U1 = ["onClick"], $1 = { class: "context-menu-icon" }, K1 = {
   key: 0,
   class: "active-indicator"
-}, j_ = {
+}, j1 = {
   key: 0,
   class: "context-menu-separator"
-}, q_ = { class: "context-menu-info" }, Y_ = { class: "context-menu-value" }, nh = "https://ibkr-docker-manage.aiworkspace.pro/docker_control.php", Q_ = 1e4, X_ = 8e3, Z_ = /* @__PURE__ */ Ao({
+}, q1 = { class: "context-menu-info" }, Y1 = { class: "context-menu-value" }, nh = "https://ibkr-docker-manage.aiworkspace.pro/docker_control.php", Q1 = 1e4, X1 = 8e3, Z1 = /* @__PURE__ */ Ao({
   __name: "Summary",
   props: {
     showHeaderLink: { type: Boolean, default: !1 },
@@ -45868,9 +45868,9 @@ const N1 = /* @__PURE__ */ V1("line", xn), W1 = { class: "notification-container
       gl,
       En,
       js,
-      m1,
-      x1,
-      p1
+      m_,
+      x_,
+      p_
     );
     const i = e, s = t, o = Le(null), n = Le(null), r = kI(1e4, i.userId), a = Pr({}), l = Le(null), d = Le(null), c = Pr({}), u = Le(null), h = Pr({
       bansi: { isLoading: !1, isStarting: !1, isStopping: !1 },
@@ -46332,7 +46332,7 @@ const N1 = /* @__PURE__ */ V1("line", xn), W1 = { class: "notification-container
       const B = h[F];
       if (!B || B.isLoading) return;
       B.isLoading = !0, B.lastError = null;
-      const V = F === "vk" ? "https://ibkr.vk.to5001.aiworkspace.pro/api/maintenance" : `https://ibkr.${F}.to5001.aiworkspace.pro/api/maintenance`, N = new AbortController(), k = setTimeout(() => N.abort(), X_);
+      const V = F === "vk" ? "https://ibkr.vk.to5001.aiworkspace.pro/api/maintenance" : `https://ibkr.${F}.to5001.aiworkspace.pro/api/maintenance`, N = new AbortController(), k = setTimeout(() => N.abort(), X1);
       try {
         const K = await fetch(V, { signal: N.signal });
         if (!K.ok)
@@ -46352,7 +46352,7 @@ const N1 = /* @__PURE__ */ V1("line", xn), W1 = { class: "notification-container
         setTimeout(() => {
           bd(F);
         }, B * 500);
-        const V = setInterval(() => bd(F), Q_);
+        const V = setInterval(() => bd(F), Q1);
         Es.push(V);
       });
     }
@@ -46428,32 +46428,32 @@ const N1 = /* @__PURE__ */ V1("line", xn), W1 = { class: "notification-container
       var V, N;
       const B = pm("router-link");
       return se(), oe(No, null, [
-        G("div", W1, [
+        G("div", W_, [
           (se(!0), oe(No, null, Er(g.value, (k) => (se(), oe("div", {
             key: k.id,
             class: Dr(["notification", k.type])
           }, [
-            G("div", z1, [
-              G("span", U1, Ce(k.type === "success" ? "✅" : "❌"), 1),
-              G("span", $1, Ce(k.message), 1)
+            G("div", z_, [
+              G("span", U_, Ce(k.type === "success" ? "✅" : "❌"), 1),
+              G("span", $_, Ce(k.message), 1)
             ]),
             G("button", {
               class: "notification-close",
               onClick: (K) => wd(k.id)
-            }, "×", 8, K1)
+            }, "×", 8, K_)
           ], 2))), 128))
         ]),
-        G("div", j1, [
-          gi(r).isLoading.value ? (se(), oe("div", q1, [...F[2] || (F[2] = [
+        G("div", j_, [
+          gi(r).isLoading.value ? (se(), oe("div", q_, [...F[2] || (F[2] = [
             G("div", { class: "loading-spinner" }, null, -1),
             G("p", null, "Loading the latest metrics...", -1)
-          ])])) : gi(r).isError.value ? (se(), oe("div", Y1, [
+          ])])) : gi(r).isError.value ? (se(), oe("div", Y_, [
             F[3] || (F[3] = G("h2", null, "Error Loading Data", -1)),
             F[4] || (F[4] = G("p", null, "An error occurred while fetching the metrics:", -1)),
             G("pre", null, Ce(gi(r).error.value), 1)
-          ])) : gi(r).isSuccess.value ? (se(), oe("div", Q1, [
-            G("div", X1, [
-              G("div", Z1, [
+          ])) : gi(r).isSuccess.value ? (se(), oe("div", Q_, [
+            G("div", X_, [
+              G("div", Z_, [
                 G("h2", null, [
                   e.showHeaderLink ? (se(), fm(B, {
                     key: 0,
@@ -46464,7 +46464,7 @@ const N1 = /* @__PURE__ */ V1("line", xn), W1 = { class: "notification-container
                       Cm("Summary", -1)
                     ])]),
                     _: 1
-                  })) : (se(), oe("span", J1, "Summary"))
+                  })) : (se(), oe("span", J_, "Summary"))
                 ]),
                 G("button", {
                   onClick: F[0] || (F[0] = (k) => s("minimize")),
@@ -46472,7 +46472,7 @@ const N1 = /* @__PURE__ */ V1("line", xn), W1 = { class: "notification-container
                   title: "Minimize Summary"
                 }, " − ")
               ]),
-              G("div", e_, [
+              G("div", e1, [
                 wa(gi(DI), {
                   columnDefs: re.value,
                   rowData: Dt.value,
@@ -46492,17 +46492,17 @@ const N1 = /* @__PURE__ */ V1("line", xn), W1 = { class: "notification-container
                   class: "summary-ag-grid"
                 }, null, 8, ["columnDefs", "rowData", "modules", "gridOptions"])
               ]),
-              l.value && d.value ? (se(), oe("div", t_, [
-                (V = S.value) != null && V.isLoading.value ? (se(), oe("div", i_, " Loading " + Ce(d.value === "nlv" ? "NLV" : "Maintenance Margin") + " historical data... ", 1)) : (N = S.value) != null && N.isError.value ? (se(), oe("div", s_, " Error loading " + Ce(d.value === "nlv" ? "NLV" : "Maintenance Margin") + " historical data: " + Ce(S.value.error.value), 1)) : x.value ? (se(), oe("div", o_, [
+              l.value && d.value ? (se(), oe("div", t1, [
+                (V = S.value) != null && V.isLoading.value ? (se(), oe("div", i1, " Loading " + Ce(d.value === "nlv" ? "NLV" : "Maintenance Margin") + " historical data... ", 1)) : (N = S.value) != null && N.isError.value ? (se(), oe("div", s1, " Error loading " + Ce(d.value === "nlv" ? "NLV" : "Maintenance Margin") + " historical data: " + Ce(S.value.error.value), 1)) : x.value ? (se(), oe("div", o1, [
                   G("h4", null, Ce(d.value === "nlv" ? "NLV" : "Maintenance Margin") + " History ", 1),
-                  G("div", n_, [
-                    wa(gi(N1), {
+                  G("div", n1, [
+                    wa(gi(N_), {
                       data: x.value,
                       options: T.value,
                       height: 300
                     }, null, 8, ["data", "options"])
                   ])
-                ])) : (se(), oe("div", r_, " No " + Ce(d.value === "nlv" ? "NLV" : "Maintenance Margin") + " historical data available ", 1))
+                ])) : (se(), oe("div", r1, " No " + Ce(d.value === "nlv" ? "NLV" : "Maintenance Margin") + " historical data available ", 1))
               ])) : Ts("", !0),
               (se(!0), oe(No, null, Er(J.value, (k) => {
                 var K, ye, $i, ht, Ds, Sd, Rd, xd, Fd, Pd, Ed, Dd;
@@ -46510,16 +46510,16 @@ const N1 = /* @__PURE__ */ V1("line", xn), W1 = { class: "notification-container
                   key: `breakdown-${typeof k.nlv_internal_account_id == "string" ? parseInt(k.nlv_internal_account_id) : k.nlv_internal_account_id}`,
                   class: "calculation-breakdown"
                 }, [
-                  G("div", a_, [
-                    G("div", l_, [
+                  G("div", a1, [
+                    G("div", l1, [
                       G("div", null, " Calculation breakdown for Client" + Ce(((K = M.value) == null ? void 0 : K.findIndex((Y) => {
                         const me = typeof Y.nlv_internal_account_id == "string" ? parseInt(Y.nlv_internal_account_id) : Y.nlv_internal_account_id, pe = typeof k.nlv_internal_account_id == "string" ? parseInt(k.nlv_internal_account_id) : k.nlv_internal_account_id;
                         return me === pe;
                       })) + 1) + ": ", 1),
                       F[6] || (F[6] = G("div", null, "Assumptions: maintenance margin (m) = 30%", -1))
                     ]),
-                    G("div", d_, [
-                      G("div", c_, [
+                    G("div", d1, [
+                      G("div", c1, [
                         G("div", {
                           class: Dr(["container-status-badge", Rr(((ye = M.value) == null ? void 0 : ye.findIndex((Y) => {
                             const me = typeof Y.nlv_internal_account_id == "string" ? parseInt(Y.nlv_internal_account_id) : Y.nlv_internal_account_id, pe = typeof k.nlv_internal_account_id == "string" ? parseInt(k.nlv_internal_account_id) : k.nlv_internal_account_id;
@@ -46550,8 +46550,8 @@ const N1 = /* @__PURE__ */ V1("line", xn), W1 = { class: "notification-container
                           (Dd = h[$t(((Ed = M.value) == null ? void 0 : Ed.findIndex((Y) => {
                             const me = typeof Y.nlv_internal_account_id == "string" ? parseInt(Y.nlv_internal_account_id) : Y.nlv_internal_account_id, pe = typeof k.nlv_internal_account_id == "string" ? parseInt(k.nlv_internal_account_id) : k.nlv_internal_account_id;
                             return me === pe;
-                          })) + 1)]) != null && Dd.isStopping ? (se(), oe("span", f_, "Stopping...")) : (se(), oe("span", m_, "⏹️ Stop Container"))
-                        ], 8, p_)) : (se(), oe("button", {
+                          })) + 1)]) != null && Dd.isStopping ? (se(), oe("span", f1, "Stopping...")) : (se(), oe("span", m1, "⏹️ Stop Container"))
+                        ], 8, p1)) : (se(), oe("button", {
                           key: 0,
                           class: "docker-control-btn start-btn",
                           disabled: (Sd = h[$t(((Ds = M.value) == null ? void 0 : Ds.findIndex((Y) => {
@@ -46569,63 +46569,63 @@ const N1 = /* @__PURE__ */ V1("line", xn), W1 = { class: "notification-container
                           (xd = h[$t(((Rd = M.value) == null ? void 0 : Rd.findIndex((Y) => {
                             const me = typeof Y.nlv_internal_account_id == "string" ? parseInt(Y.nlv_internal_account_id) : Y.nlv_internal_account_id, pe = typeof k.nlv_internal_account_id == "string" ? parseInt(k.nlv_internal_account_id) : k.nlv_internal_account_id;
                             return me === pe;
-                          })) + 1)]) != null && xd.isStarting ? (se(), oe("span", h_, "Starting...")) : (se(), oe("span", g_, "▶️ Start Container"))
-                        ], 8, u_))
+                          })) + 1)]) != null && xd.isStarting ? (se(), oe("span", h1, "Starting...")) : (se(), oe("span", g1, "▶️ Start Container"))
+                        ], 8, u1))
                       ])
                     ])
                   ]),
-                  G("div", C_, [
-                    G("div", v_, [
+                  G("div", C1, [
+                    G("div", v1, [
                       F[11] || (F[11] = G("div", { class: "stage-header" }, "Stage-1 (drop d = 15%)", -1)),
-                      G("div", w_, [
+                      G("div", w1, [
                         F[7] || (F[7] = G("div", { class: "item-label" }, "Max GMV that survives stop-adding threshold", -1)),
-                        G("div", b_, [
-                          G("span", y_, "Gmax = NLV / [ 1 - (1 - d) x (1 - m) ] = " + Ce(b(k.maxGmvNlvSide)), 1)
+                        G("div", b1, [
+                          G("span", y1, "Gmax = NLV / [ 1 - (1 - d) x (1 - m) ] = " + Ce(b(k.maxGmvNlvSide)), 1)
                         ])
                       ]),
-                      G("div", S_, [
+                      G("div", S1, [
                         F[8] || (F[8] = G("div", { class: "item-label" }, "Max Maintenance margin (Before drop) to survive drop", -1)),
-                        G("div", R_, [
-                          G("span", x_, "Mk = Gmax x m = " + Ce(b(k.mkNlvSide)), 1)
+                        G("div", R1, [
+                          G("span", x1, "Mk = Gmax x m = " + Ce(b(k.mkNlvSide)), 1)
                         ])
                       ]),
-                      G("div", F_, [
+                      G("div", F1, [
                         F[9] || (F[9] = G("div", { class: "item-label" }, "Maintenance margin headroom", -1)),
-                        G("div", P_, [
-                          G("span", E_, "Mk - M = " + Ce(b(k.maintnanceMarginHeadroomNlvSide)), 1)
+                        G("div", P1, [
+                          G("span", E1, "Mk - M = " + Ce(b(k.maintnanceMarginHeadroomNlvSide)), 1)
                         ])
                       ]),
-                      G("div", D_, [
+                      G("div", D1, [
                         F[10] || (F[10] = G("div", { class: "item-label" }, "Add'l GMV allowed", -1)),
-                        G("div", T_, [
-                          G("span", M_, "(Mk - M) / m = " + Ce(b(k.addlGmvAllowedNlvSide)), 1)
+                        G("div", T1, [
+                          G("span", M1, "(Mk - M) / m = " + Ce(b(k.addlGmvAllowedNlvSide)), 1)
                         ])
                       ])
                     ]),
-                    G("div", A_, [
+                    G("div", A1, [
                       F[16] || (F[16] = G("div", { class: "stage-header" }, "Stage-2 (drop d = 10%)", -1)),
-                      G("div", I_, [
+                      G("div", I1, [
                         F[12] || (F[12] = G("div", { class: "item-label" }, "Max GMV that survives start-reducing threshold", -1)),
-                        G("div", k_, [
-                          G("span", L_, "Gmax = NLV / [ 1 - (1 - d) x (1 - m) ] = " + Ce(b(k.maxGmvMaintenanceSide)), 1)
+                        G("div", k1, [
+                          G("span", L1, "Gmax = NLV / [ 1 - (1 - d) x (1 - m) ] = " + Ce(b(k.maxGmvMaintenanceSide)), 1)
                         ])
                       ]),
-                      G("div", O_, [
+                      G("div", O1, [
                         F[13] || (F[13] = G("div", { class: "item-label" }, "Max Maintenance margin (Before drop) to survive drop", -1)),
-                        G("div", __, [
-                          G("span", H_, "Mk = Gmax x m = " + Ce(b(k.mkMaintenanceSide)), 1)
+                        G("div", _1, [
+                          G("span", H1, "Mk = Gmax x m = " + Ce(b(k.mkMaintenanceSide)), 1)
                         ])
                       ]),
-                      G("div", B_, [
+                      G("div", B1, [
                         F[14] || (F[14] = G("div", { class: "item-label" }, "Maintenance margin headroom", -1)),
-                        G("div", G_, [
-                          G("span", V_, "Mk - M = " + Ce(b(k.maintnanceMarginHeadroomMaintenanceSide)), 1)
+                        G("div", G1, [
+                          G("span", V1, "Mk - M = " + Ce(b(k.maintnanceMarginHeadroomMaintenanceSide)), 1)
                         ])
                       ]),
-                      G("div", N_, [
+                      G("div", N1, [
                         F[15] || (F[15] = G("div", { class: "item-label" }, "Add'l GMV allowed", -1)),
-                        G("div", W_, [
-                          G("span", z_, "(Mk - M) / m = " + Ce(b(k.addlGmvAllowedMaintenanceSide)), 1)
+                        G("div", W1, [
+                          G("span", z1, "(Mk - M) / m = " + Ce(b(k.addlGmvAllowedMaintenanceSide)), 1)
                         ])
                       ])
                     ])
@@ -46644,14 +46644,14 @@ const N1 = /* @__PURE__ */ V1("line", xn), W1 = { class: "notification-container
                   class: Dr(["context-menu-item", { active: k.active }]),
                   onClick: (ye) => em(k.action)
                 }, [
-                  G("span", $_, Ce(k.icon), 1),
+                  G("span", $1, Ce(k.icon), 1),
                   G("span", null, Ce(k.label), 1),
-                  k.active ? (se(), oe("span", K_, "●")) : Ts("", !0)
-                ], 10, U_))), 128)),
-                yd.value.length > 0 ? (se(), oe("div", j_)) : Ts("", !0),
-                G("div", q_, [
+                  k.active ? (se(), oe("span", K1, "●")) : Ts("", !0)
+                ], 10, U1))), 128)),
+                yd.value.length > 0 ? (se(), oe("div", j1)) : Ts("", !0),
+                G("div", q1, [
                   F[17] || (F[17] = G("span", { class: "context-menu-label" }, "Fetched:", -1)),
-                  G("span", Y_, Ce(tm(ee.value.fetchedAt)) + " (PST) ", 1)
+                  G("span", Y1, Ce(tm(ee.value.fetchedAt)) + " (PST) ", 1)
                 ])
               ], 4)) : Ts("", !0)
             ])
@@ -46660,12 +46660,12 @@ const N1 = /* @__PURE__ */ V1("line", xn), W1 = { class: "notification-container
       ], 64);
     };
   }
-}), J_ = (e, t) => {
+}), J1 = (e, t) => {
   const i = e.__vccOpts || e;
   for (const [s, o] of t)
     i[s] = o;
   return i;
-}, aH = /* @__PURE__ */ J_(Z_, [["__scopeId", "data-v-c842f4be"]]);
+}, aH = /* @__PURE__ */ J1(Z1, [["__scopeId", "data-v-c842f4be"]]);
 export {
   aH as Summary,
   aH as default
