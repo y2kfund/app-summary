@@ -5,5 +5,6 @@ declare const _default: import('vue').DefineComponent<SummaryProps, {}, {}, {}, 
     onMinimize?: (() => any) | undefined;
 }>, {
     showHeaderLink: boolean;
+    userId: string | null;
 }, {}, {}, {}, string, import('vue').ComponentProvideOptions, false, {}, any>;
 export default _default;

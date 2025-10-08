@@ -33,7 +33,8 @@ ChartJS.register(
 )
 
 const props = withDefaults(defineProps<SummaryProps>(), {
-  showHeaderLink: false
+  showHeaderLink: false,
+  userId: null
 })
 
 const emit = defineEmits<{
@@ -44,7 +45,7 @@ const emit = defineEmits<{
 const gridApi = ref<GridApi | null>(null)
 const columnApiRef = ref<ColumnApi | null>(null)
 
-const q = useNlvMarginQuery(10000)
+const q = useNlvMarginQuery(10000, props.userId)
 
 // State for graph visibility and selected account
 const graphVisibility: { [key: number]: { nlv: boolean; mm: boolean } } = reactive({});
