@@ -529,7 +529,7 @@ const columnDefs = computed<ColDef[]>(() => [
     }
   },
   {
-    headerName: "Add'l GMV to Stop-Reducing Cap",
+    headerName: "Add'l GMV to stop-adding threshold",
     field: 'addlGmvAllowedNlvSide',
     valueFormatter: (params) => formatCurrency(params.value),
     cellClass: (params) => {
@@ -540,7 +540,7 @@ const columnDefs = computed<ColDef[]>(() => [
     flex: 1
   },
   {
-    headerName: "Add'l GMV to Start-Reducing Cap",
+    headerName: "Add'l GMV to start-reducing threshold",
     field: 'addlGmvAllowedMaintenanceSide',
     valueFormatter: (params) => formatCurrency(params.value),
     cellClass: (params) => {

@@ -46117,7 +46117,7 @@ const N_ = /* @__PURE__ */ V_("line", xn), W_ = { class: "notification-container
         }
       },
       {
-        headerName: "Add'l GMV to Stop-Reducing Cap",
+        headerName: "Add'l GMV to stop-adding threshold",
         field: "addlGmvAllowedNlvSide",
         valueFormatter: (R) => b(R.value),
         cellClass: (R) => {
@@ -46127,7 +46127,7 @@ const N_ = /* @__PURE__ */ V_("line", xn), W_ = { class: "notification-container
         flex: 1
       },
       {
-        headerName: "Add'l GMV to Start-Reducing Cap",
+        headerName: "Add'l GMV to start-reducing threshold",
         field: "addlGmvAllowedMaintenanceSide",
         valueFormatter: (R) => b(R.value),
         cellClass: (R) => {
@@ -46665,7 +46665,7 @@ const N_ = /* @__PURE__ */ V_("line", xn), W_ = { class: "notification-container
   for (const [s, o] of t)
     i[s] = o;
   return i;
-}, aH = /* @__PURE__ */ J1(Z1, [["__scopeId", "data-v-c842f4be"]]);
+}, aH = /* @__PURE__ */ J1(Z1, [["__scopeId", "data-v-2bfba055"]]);
 export {
   aH as Summary,
   aH as default
