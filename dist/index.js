@@ -46065,6 +46065,8 @@ const N_ = /* @__PURE__ */ V_("line", xn), W_ = { class: "notification-container
         valueGetter: (R) => {
           var V;
           if (R.data.isTotal) return "All Accounts";
+          if (R.data.legal_entity)
+            return R.data.legal_entity;
           const F = typeof R.data.nlv_internal_account_id == "string" ? parseInt(R.data.nlv_internal_account_id) : R.data.nlv_internal_account_id;
           return `Client${(((V = M.value) == null ? void 0 : V.findIndex((N) => (typeof N.nlv_internal_account_id == "string" ? parseInt(N.nlv_internal_account_id) : N.nlv_internal_account_id) === F)) ?? -1) + 1}`;
         },
@@ -46512,10 +46514,10 @@ const N_ = /* @__PURE__ */ V_("line", xn), W_ = { class: "notification-container
                 }, [
                   G("div", a1, [
                     G("div", l1, [
-                      G("div", null, " Calculation breakdown for Client" + Ce(((K = M.value) == null ? void 0 : K.findIndex((Y) => {
+                      G("div", null, " Calculation breakdown for " + Ce(k.legal_entity || `Client${((K = M.value) == null ? void 0 : K.findIndex((Y) => {
                         const me = typeof Y.nlv_internal_account_id == "string" ? parseInt(Y.nlv_internal_account_id) : Y.nlv_internal_account_id, pe = typeof k.nlv_internal_account_id == "string" ? parseInt(k.nlv_internal_account_id) : k.nlv_internal_account_id;
                         return me === pe;
-                      })) + 1) + ": ", 1),
+                      })) + 1}`) + ": ", 1),
                       F[6] || (F[6] = G("div", null, "Assumptions: maintenance margin (m) = 30%", -1))
                     ]),
                     G("div", d1, [
@@ -46665,7 +46667,7 @@ const N_ = /* @__PURE__ */ V_("line", xn), W_ = { class: "notification-container
   for (const [s, o] of t)
     i[s] = o;
   return i;
-}, aH = /* @__PURE__ */ J1(Z1, [["__scopeId", "data-v-2bfba055"]]);
+}, aH = /* @__PURE__ */ J1(Z1, [["__scopeId", "data-v-a848ce2c"]]);
 export {
   aH as Summary,
   aH as default

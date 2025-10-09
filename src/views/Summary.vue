@@ -457,6 +457,10 @@ const columnDefs = computed<ColDef[]>(() => [
     field: 'account',
     valueGetter: (params) => {
       if (params.data.isTotal) return 'All Accounts';
+      // Use legal_entity if available, otherwise fall back to Client# format
+      if (params.data.legal_entity) {
+        return params.data.legal_entity;
+      }
       const accountId = typeof params.data.nlv_internal_account_id === 'string' 
         ? parseInt(params.data.nlv_internal_account_id) 
         : params.data.nlv_internal_account_id;
@@ -1190,11 +1194,11 @@ function formatToPST(utcTimestamp: string | null): string {
           <div class="breakdown-header">
             <div class="breakdown-header-left">
               <div>
-                Calculation breakdown for Client{{ calculatedMetrics?.findIndex(m => {
+                Calculation breakdown for {{ item.legal_entity || `Client${calculatedMetrics?.findIndex(m => {
                 const mAccountId = typeof m.nlv_internal_account_id === 'string' ? parseInt(m.nlv_internal_account_id) : m.nlv_internal_account_id;
                 const itemAccountId = typeof item.nlv_internal_account_id === 'string' ? parseInt(item.nlv_internal_account_id) : item.nlv_internal_account_id;
                 return mAccountId === itemAccountId;
-                }) + 1 }}:
+                }) + 1}` }}:
               </div>
               <div>Assumptions: maintenance margin (m) = 30%</div>
             </div>
