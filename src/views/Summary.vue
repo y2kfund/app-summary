@@ -644,6 +644,31 @@ const gridRowData = computed(() => {
   return data;
 });
 
+// Separate regular data from totals
+const regularRowData = computed(() => {
+  return filteredMetrics.value || [];
+});
+
+const pinnedBottomRowData = computed(() => {
+  // Only show totals row when showing all accounts
+  if (!selectedClientFromUrl.value && allAccountsSummary.value) {
+    return [{
+      nlv_internal_account_id: -1,
+      nlv_val: allAccountsSummary.value.totalNlv,
+      maintenance_val: allAccountsSummary.value.totalMaintenance,
+      addlGmvAllowedNlvSide: allAccountsSummary.value.totalAddlGmvToStopReducing,
+      addlGmvAllowedMaintenanceSide: allAccountsSummary.value.totalAddlGmvToStartReducing,
+      isTotal: true
+    }];
+  }
+  return [];
+});
+
+// Add function to determine if row should be pinned
+function isRowPinned(params: any) {
+  return params.data?.isTotal ? 'bottom' : null;
+}
+
 // Add context menu state after your existing reactive variables
 const contextMenu = ref({
   visible: false,
@@ -1137,7 +1162,8 @@ function formatToPST(utcTimestamp: string | null): string {
         <div class="ag-theme-alpine summary-grid">
           <AgGridVue
             :columnDefs="columnDefs"
-            :rowData="gridRowData"
+            :rowData="regularRowData"
+            :pinnedBottomRowData="pinnedBottomRowData"
             :modules="[AllCommunityModule]"
             :defaultColDef="{
               resizable: true,
@@ -1149,7 +1175,7 @@ function formatToPST(utcTimestamp: string | null): string {
               suppressMenuHide: true,
               enableBrowserTooltips: true,
               getRowStyle: (params) => {
-                if (params.data.isTotal) {
+                if (params.data?.isTotal) {
                   return { 'font-weight': 'bold', 'background-color': '#f8f9fa' };
                 }
                 return null;
@@ -1159,7 +1185,7 @@ function formatToPST(utcTimestamp: string | null): string {
             class="summary-ag-grid"
           />
         </div>
-
+        
         <!-- Chart.js Graph Display Section -->
         <div v-if="selectedAccountForHistory && selectedGraphType" class="graph-section">
           <div v-if="currentHistoryQuery?.isLoading.value" class="graph-loading">
@@ -1948,6 +1974,21 @@ function formatToPST(utcTimestamp: string | null): string {
   .summary-grid {
     font-size: 0.875rem;
   }
+}
+
+/* Pinned bottom row styles */
+:deep(.ag-pinned-bottom-container) {
+  border-top: 2px solid #dee2e6;
+}
+
+:deep(.ag-row-pinned-bottom) {
+  background-color: #f8f9fa !important;
+  font-weight: bold;
+}
+
+:deep(.ag-row-pinned-bottom .ag-cell) {
+  background-color: #f8f9fa !important;
+  border-bottom: none;
 }
 </style>
 
