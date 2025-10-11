@@ -465,6 +465,11 @@ const columnDefs = computed<ColDef[]>(() => [
     pinned: 'left',
     width: 95,
     hide: !isSummaryColVisible('account'),
+    onCellClicked: (event: any) => {
+      // Don't allow filtering on total rows
+      if (event.data?.isTotal) return
+      handleSummaryAccountCellFilterClick(event?.value)
+    },
     cellRenderer: (params) => {
       if (params.data.isTotal) {
         return `<div class="account-cell total-row">
@@ -477,7 +482,7 @@ const columnDefs = computed<ColDef[]>(() => [
         : (params.data.addlGmvAllowedNlvSide < 0 ? 'STAGE 1 EXHAUSTED' : 'OK');
       const statusClass = status === 'STAGE 2 EXHAUSTED' ? 'status-stage2' : 
                          status === 'STAGE 1 EXHAUSTED' ? 'status-stage1' : 'status-ok';
-      return `<div class="account-cell">
+      return `<div class="account-cell clickable-account">
         <span class="account-name">${params.value}</span>
         <span class="status-badge ${statusClass}">${status}</span>
       </div>`;
@@ -626,22 +631,8 @@ function onGridReady(event: any) {
 const gridRowData = computed(() => {
   if (!calculatedMetrics.value) return [];
   
-  const data = [...filteredMetrics.value];
-  
-  // Add totals row if showing all accounts - move to bottom
-  if (!selectedClientFromUrl.value && allAccountsSummary.value) {
-    data.push({
-      nlv_internal_account_id: -1,
-      nlv_val: allAccountsSummary.value.totalNlv,
-      maintenance_val: allAccountsSummary.value.totalMaintenance,
-      excess_maintenance_margin: allAccountsSummary.value.totalExcessMaintenance,
-      addlGmvAllowedNlvSide: allAccountsSummary.value.totalAddlGmvToStopReducing,
-      addlGmvAllowedMaintenanceSide: allAccountsSummary.value.totalAddlGmvToStartReducing,
-      isTotal: true
-    } as any);
-  }
-  
-  return data;
+  // Just return the filtered metrics without adding totals to the main data
+  return filteredMetrics.value;
 });
 
 // Separate regular data from totals
@@ -649,9 +640,10 @@ const regularRowData = computed(() => {
   return filteredMetrics.value || [];
 });
 
+// Update the pinnedBottomRowData computed property to hide totals when filters are active
 const pinnedBottomRowData = computed(() => {
-  // Only show totals row when showing all accounts
-  if (!selectedClientFromUrl.value && allAccountsSummary.value) {
+  // Only show totals row when showing all accounts AND no filters are active
+  if (!selectedClientFromUrl.value && allAccountsSummary.value && activeSummaryFilters.value.length === 0) {
     return [{
       nlv_internal_account_id: -1,
       nlv_val: allAccountsSummary.value.totalNlv,
@@ -1116,6 +1108,87 @@ function formatToPST(utcTimestamp: string | null): string {
     return 'Invalid Date';
   }
 }
+
+// Add active filters tracking for tag UI (similar to Positions)
+type ActiveSummaryFilter = { field: 'account'; value: string }
+const activeSummaryFilters = ref<ActiveSummaryFilter[]>([])
+
+function syncActiveSummaryFiltersFromGrid() {
+  const api = gridApi.value
+  const next: ActiveSummaryFilter[] = []
+  
+  if (api) {
+    const model = api.getFilterModel?.() || {}
+    const getFilterValue = (field: string) => model?.[field]?.filter || model?.[field]?.values || null
+    
+    const account = getFilterValue('account')
+    if (typeof account === 'string' && account.length) {
+      next.push({ field: 'account', value: account })
+    }
+  }
+  
+  activeSummaryFilters.value = next
+}
+
+function handleSummaryAccountCellFilterClick(value: any) {
+  const api = gridApi.value
+  if (!api || value === undefined || value === null) return
+  
+  // Use normal ag-Grid filters for account field
+  const currentModel = (api.getFilterModel && api.getFilterModel()) || {}
+  currentModel.account = { type: 'equals', filter: String(value) }
+  
+  if (typeof api.setFilterModel === 'function') {
+    api.setFilterModel(currentModel)
+  }
+  if (typeof api.onFilterChanged === 'function') {
+    api.onFilterChanged()
+  }
+  
+  syncActiveSummaryFiltersFromGrid()
+}
+
+function clearSummaryFilter(field: 'account') {
+  const api = gridApi.value
+  if (!api) return
+  
+  // Clear ag-Grid filter for the field
+  const currentModel = (api.getFilterModel && api.getFilterModel()) || {}
+  delete currentModel[field]
+  
+  if (typeof api.setFilterModel === 'function') {
+    api.setFilterModel(currentModel)
+  }
+  if (typeof api.onFilterChanged === 'function') {
+    api.onFilterChanged()
+  }
+  
+  syncActiveSummaryFiltersFromGrid()
+}
+
+function clearAllSummaryFilters() {
+  const api = gridApi.value
+  if (!api) return
+  
+  // Clear all ag-Grid filters
+  if (typeof api.setFilterModel === 'function') {
+    api.setFilterModel({})
+  }
+  if (typeof api.onFilterChanged === 'function') {
+    api.onFilterChanged()
+  }
+  
+  syncActiveSummaryFiltersFromGrid()
+}
+
+// Keep active filter tags in sync whenever filters change via UI
+watch(() => gridApi.value, (api) => {
+  if (!api) return
+  const listener = () => {
+    syncActiveSummaryFiltersFromGrid()
+  }
+  api.addEventListener?.('filterChanged', listener)
+}, { immediate: true })
 </script>
 
 <template>
@@ -1201,6 +1274,18 @@ function formatToPST(utcTimestamp: string | null): string {
                 <button class="btn-done" @click="closeSummaryColumnsPopup">Done</button>
               </div>
             </div>
+          </div>
+        </div>
+
+        <!-- Active filters bar (similar to Positions) -->
+        <div v-if="activeSummaryFilters.length" class="summary-filters-bar">
+          <span class="filters-label">Filtered by:</span>
+          <div class="filters-tags">
+            <span v-for="f in activeSummaryFilters" :key="`${f.field}-${f.value}`" class="filter-tag">
+              <strong>{{ f.field === 'account' ? 'Account' : f.field }}:</strong> {{ f.value }}
+              <button class="tag-clear" @click="clearSummaryFilter(f.field)" aria-label="Clear filter">✕</button>
+            </span>
+            <button class="btn btn-clear-all" @click="clearAllSummaryFilters">Clear all</button>
           </div>
         </div>
 
@@ -1705,7 +1790,7 @@ function formatToPST(utcTimestamp: string | null): string {
   border-radius: 6px;
   border: 1px solid #d1d5db;
   background: #f9fafb;
-  color: #6b7280;
+  color: #6c757d;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -1835,7 +1920,100 @@ function formatToPST(utcTimestamp: string | null): string {
   background: #004085;
 }
 
-/* ...rest of existing styles... */
+/* Add these filter bar styles (similar to Positions) */
+.summary-filters-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
+}
+
+.filters-label {
+  font-size: 0.875rem;
+  color: #495057;
+  font-weight: 600;
+}
+
+.filters-tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.filter-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #fff;
+  color: #495057;
+  padding: 0.3rem 0.6rem;
+  border-radius: 16px;
+  border: 1px solid #dee2e6;
+  font-size: 0.8125rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.filter-tag .tag-clear {
+  appearance: none;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #6c757d;
+  font-size: 0.875rem;
+  padding: 0;
+  margin-left: 0.25rem;
+  transition: color 0.2s;
+}
+
+.filter-tag .tag-clear:hover {
+  color: #dc3545;
+}
+
+.btn-clear-all {
+  padding: 0.3rem 0.6rem;
+  border-radius: 16px;
+  border: 1px solid #dee2e6;
+  background: #fff;
+
+  color: #6c757d;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  transition: all 0.2s;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.btn-clear-all:hover {
+  background: #f8f9fa;
+  color: #495057;
+  border-color: #adb5bd;
+}
+
+/* Add clickable styling for account cells */
+:deep(.clickable-account .account-name) {
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+:deep(.clickable-account .account-name:hover) {
+  color: #007bff;
+  text-decoration: underline;
+}
+
+/* Ensure total row account names are not clickable */
+:deep(.total-row .account-name) {
+  cursor: default;
+}
+
+:deep(.total-row .account-name:hover) {
+  color: #1f2a37;
+  text-decoration: none;
+}
+
+/* ...existing styles... */
 </style>
 
 <style>
