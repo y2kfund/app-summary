@@ -46863,7 +46863,7 @@ const a_ = /* @__PURE__ */ r_("line", Ln), l_ = { class: "notification-container
   for (const [s, o] of t)
     i[s] = o;
   return i;
-}, OH = /* @__PURE__ */ EH(PH, [["__scopeId", "data-v-0b72f33d"]]);
+}, OH = /* @__PURE__ */ EH(PH, [["__scopeId", "data-v-34bb0515"]]);
 export {
   OH as Summary,
   OH as default
