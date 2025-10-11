@@ -1223,7 +1223,7 @@ watch(() => gridApi.value, (api) => {
 // Add URL parameter handling functions (missing from your current code)
 function parseFiltersFromUrl(): { account?: string } {
   const url = new URL(window.location.href)
-  const account = url.searchParams.get('summary_account') || undefined
+  const account = url.searchParams.get('all_cts_clientId') || undefined
   return { account }
 }
 
@@ -1233,9 +1233,9 @@ function writeFiltersToUrlFromModel(model: any) {
   // Handle account filter
   const acc = model?.account?.filter || ''
   if (acc) {
-    url.searchParams.set('summary_account', acc)
+    url.searchParams.set('all_cts_clientId', acc)
   } else {
-    url.searchParams.delete('summary_account')
+    url.searchParams.delete('all_cts_clientId')
   }
   
   window.history.replaceState({}, '', url.toString())
@@ -2366,6 +2366,7 @@ const chartOptions = computed(() => ({
   background-color: #ef4444;
   color: white;
   border-color: #dc2626;
+  width: auto;
 }
 
 .stop-btn:hover:not(:disabled) {

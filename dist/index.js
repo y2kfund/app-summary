@@ -46471,12 +46471,12 @@ const a_ = /* @__PURE__ */ r_("line", Ln), l_ = { class: "notification-container
       (L = y.addEventListener) == null || L.call(y, "filterChanged", S);
     }, { immediate: !0 });
     function wm() {
-      return { account: new URL(window.location.href).searchParams.get("summary_account") || void 0 };
+      return { account: new URL(window.location.href).searchParams.get("all_cts_clientId") || void 0 };
     }
     function Yo(y) {
       var V;
       const S = new URL(window.location.href), L = ((V = y == null ? void 0 : y.account) == null ? void 0 : V.filter) || "";
-      L ? S.searchParams.set("summary_account", L) : S.searchParams.delete("summary_account"), window.history.replaceState({}, "", S.toString());
+      L ? S.searchParams.set("all_cts_clientId", L) : S.searchParams.delete("all_cts_clientId"), window.history.replaceState({}, "", S.toString());
     }
     function Lr(y, S) {
       if (console.log("📊 toggleGraph called with:", y, S), a[y] || (a[y] = { nlv: !1, mm: !1 }), l.value === y && d.value === S) {
@@ -46863,7 +46863,7 @@ const a_ = /* @__PURE__ */ r_("line", Ln), l_ = { class: "notification-container
   for (const [s, o] of t)
     i[s] = o;
   return i;
-}, OH = /* @__PURE__ */ EH(PH, [["__scopeId", "data-v-c46d7521"]]);
+}, OH = /* @__PURE__ */ EH(PH, [["__scopeId", "data-v-0b72f33d"]]);
 export {
   OH as Summary,
   OH as default
