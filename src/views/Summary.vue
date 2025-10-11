@@ -1240,6 +1240,111 @@ function writeFiltersToUrlFromModel(model: any) {
   
   window.history.replaceState({}, '', url.toString())
 }
+
+// Add the missing graph toggle function
+function toggleGraph(accountId: number, type: 'nlv' | 'mm') {
+  console.log('📊 toggleGraph called with:', accountId, type)
+  
+  // Initialize if not exists
+  if (!graphVisibility[accountId]) {
+    graphVisibility[accountId] = { nlv: false, mm: false }
+  }
+  
+  // If clicking the same graph that's already active, close it
+  if (selectedAccountForHistory.value === accountId && selectedGraphType.value === type) {
+    selectedAccountForHistory.value = null
+    selectedGraphType.value = null
+    graphVisibility[accountId][type] = false
+    return
+  }
+  
+  // Close all other graphs first
+  Object.keys(graphVisibility).forEach(id => {
+    const numId = parseInt(id)
+    graphVisibility[numId] = { nlv: false, mm: false }
+  })
+  
+  // Set new graph
+  graphVisibility[accountId][type] = true
+  selectedAccountForHistory.value = accountId
+  selectedGraphType.value = type
+  
+  console.log('📊 Graph visibility updated:', graphVisibility)
+  console.log('📊 Selected account/type:', accountId, type)
+}
+
+// Add the missing computed properties for chart data
+const currentHistoryQuery = computed(() => {
+  if (selectedGraphType.value === 'nlv') {
+    return nlvHistoryQuery
+  } else if (selectedGraphType.value === 'mm') {
+    return maintenanceHistoryQuery
+  }
+  return null
+})
+
+const chartData = computed(() => {
+  const query = currentHistoryQuery.value
+  if (!query?.data.value || !Array.isArray(query.data.value)) return null
+  
+  const data = query.data.value
+  const labels = data.map(item => {
+    const date = new Date(item.fetched_at)
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  })
+  
+  const values = selectedGraphType.value === 'nlv' 
+    ? data.map(item => parseFloat(item.nlv) || 0)
+    : data.map(item => parseFloat(item.maintenance) || 0)
+  
+  return {
+    labels,
+    datasets: [{
+      label: selectedGraphType.value === 'nlv' ? 'NLV' : 'Maintenance Margin',
+      data: values,
+      borderColor: selectedGraphType.value === 'nlv' ? '#3b82f6' : '#ef4444',
+      backgroundColor: selectedGraphType.value === 'nlv' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+      borderWidth: 2,
+      fill: true,
+      tension: 0.1
+    }]
+  }
+})
+
+const chartOptions = computed(() => ({
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: {
+      display: true,
+      position: 'top' as const
+    },
+    title: {
+      display: true,
+      text: `${selectedGraphType.value === 'nlv' ? 'NLV' : 'Maintenance Margin'} History (Last 30 Days)`
+    }
+  },
+  scales: {
+    y: {
+      beginAtZero: false,
+      ticks: {
+        callback: function(value: any) {
+          return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+            minimumFractionDigits: 0
+          }).format(value)
+        }
+      }
+    }
+  },
+  interaction: {
+    intersect: false,
+    mode: 'index' as const
+  }
+}))
+
+// ...existing code...
 </script>
 
 <template>
@@ -1533,7 +1638,7 @@ function writeFiltersToUrlFromModel(model: any) {
           </div>
         </div>
 
-        <!-- Updated Context Menu -->
+        <!-- Updated Context Menu with proper styling -->
         <div 
           v-if="contextMenu.visible" 
           class="context-menu"
@@ -2064,7 +2169,273 @@ function writeFiltersToUrlFromModel(model: any) {
   text-decoration: none;
 }
 
-/* ...existing styles... */
+/* Context Menu Styles - Add these */
+.context-menu {
+  position: fixed;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  padding: 4px 0;
+  min-width: 220px;
+  font-size: 14px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  border: none;
+  background: none;
+}
+
+.context-menu-item:hover {
+  background-color: #f8fafc;
+}
+
+.context-menu-item.active {
+  background-color: #dbeafe;
+  color: #1d4ed8;
+}
+
+.context-menu-item.active:hover {
+  background-color: #bfdbfe;
+}
+
+.context-menu-icon {
+  font-size: 16px;
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.active-indicator {
+  color: #10b981;
+  font-size: 10px;
+  margin-left: auto;
+  font-weight: bold;
+}
+
+.context-menu-separator {
+  height: 1px;
+  background-color: #e5e7eb;
+  margin: 4px 0;
+}
+
+.context-menu-info {
+  padding: 8px 16px;
+  background-color: #f8fafc;
+  border-top: 1px solid #e5e7eb;
+  font-size: 12px;
+  color: #64748b;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas, monospace;
+}
+
+.context-menu-label {
+  font-weight: 600;
+  margin-right: 8px;
+  color: #475569;
+}
+
+.context-menu-value {
+  color: #1e293b;
+}
+
+/* Graph Section Styles */
+.graph-section {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.graph-loading, .graph-error, .graph-empty {
+  padding: 2rem;
+  text-align: center;
+  color: #64748b;
+  font-style: italic;
+}
+
+.graph-error {
+  color: #dc2626;
+}
+
+.chart-section h4 {
+  margin: 0 0 1rem 0;
+  color: #1e293b;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.chart-container {
+  height: 300px;
+  background: white;
+  border-radius: 6px;
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+}
+
+/* Calculation Breakdown Styles - Restore the old design */
+.calculation-breakdown {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.breakdown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.breakdown-header-left div:first-child {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 0.5rem;
+}
+
+.breakdown-header-left div:last-child {
+  font-size: 0.875rem;
+  color: #64748b;
+  font-style: italic;
+}
+
+.breakdown-header-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.container-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.status-online {
+  background-color: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.status-offline {
+  background-color: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.docker-control-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  border: 1px solid;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.start-btn {
+  background-color: #22c55e;
+  color: white;
+  border-color: #16a34a;
+}
+
+.start-btn:hover:not(:disabled) {
+  background-color: #16a34a;
+}
+
+.stop-btn {
+  background-color: #ef4444;
+  color: white;
+  border-color: #dc2626;
+}
+
+.stop-btn:hover:not(:disabled) {
+  background-color: #dc2626;
+}
+
+.docker-control-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.breakdown-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+.breakdown-stage {
+  padding: 1.5rem;
+  border-radius: 8px;
+  border: 1px solid;
+}
+
+.stage-1 {
+  background-color: #fefce8;
+  border-color: #eab308;
+}
+
+.stage-2 {
+  background-color: #fef2f2;
+  border-color: #ef4444;
+}
+
+.stage-header {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: #1e293b;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.stage-item {
+  margin-bottom: 1rem;
+}
+
+.stage-item:last-child {
+  margin-bottom: 0;
+}
+
+.item-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.25rem;
+}
+
+.item-value {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas, monospace;
+  font-size: 0.8125rem;
+  color: #1e293b;
+  background: rgba(255, 255, 255, 0.7);
+  padding: 0.5rem;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.formula {
+  font-weight: 500;
+}
 </style>
 
 <style>
