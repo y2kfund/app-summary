@@ -450,7 +450,90 @@ function showAllAccounts() {
   });
 }
 
-// Column definitions for ag-Grid
+// Add column visibility management after the existing reactive variables
+type SummaryColumnField = 'account' | 'nlv_val' | 'maintenance_val' | 'addlGmvAllowedNlvSide' | 'addlGmvAllowedMaintenanceSide'
+
+const allSummaryColumnOptions: Array<{ field: SummaryColumnField; label: string }> = [
+  { field: 'account', label: 'Account' },
+  { field: 'nlv_val', label: 'NLV' },
+  { field: 'maintenance_val', label: 'Maintenance Margin' },
+  { field: 'addlGmvAllowedNlvSide', label: "Add'l GMV to stop-adding threshold" },
+  { field: 'addlGmvAllowedMaintenanceSide', label: "Add'l GMV to start-reducing threshold" }
+]
+
+// URL param helpers for column visibility
+function parseSummaryVisibleColsFromUrl(): SummaryColumnField[] {
+  const url = new URL(window.location.href)
+  const colsParam = url.searchParams.get('summary_cols')
+  if (!colsParam) {
+    return allSummaryColumnOptions.map(c => c.field)
+  }
+  const fromUrl = colsParam.split('-and-').map(s => s.trim()).filter(Boolean) as SummaryColumnField[]
+  const valid = new Set(allSummaryColumnOptions.map(c => c.field))
+  const filtered = fromUrl.filter(c => valid.has(c))
+  return filtered.length ? filtered : allSummaryColumnOptions.map(c => c.field)
+}
+
+function writeSummaryVisibleColsToUrl(cols: SummaryColumnField[]) {
+  const url = new URL(window.location.href)
+  url.searchParams.set('summary_cols', cols.join('-and-'))
+  window.history.replaceState({}, '', url.toString())
+}
+
+const summaryVisibleCols = ref<SummaryColumnField[]>(parseSummaryVisibleColsFromUrl())
+
+function isSummaryColVisible(field: SummaryColumnField): boolean {
+  return summaryVisibleCols.value.includes(field)
+}
+
+// Column visibility controls
+const showSummaryColumnsPopup = ref(false)
+const summaryColumnsBtnRef = ref<HTMLElement | null>(null)
+const summaryColumnsPopupRef = ref<HTMLElement | null>(null)
+
+function toggleSummaryColumnsPopup() {
+  showSummaryColumnsPopup.value = !showSummaryColumnsPopup.value
+}
+
+function closeSummaryColumnsPopup() {
+  showSummaryColumnsPopup.value = false
+}
+
+// Close popup when clicking outside
+function handleSummaryClickOutside(event: Event) {
+  if (showSummaryColumnsPopup.value && 
+      summaryColumnsPopupRef.value && 
+      summaryColumnsBtnRef.value &&
+      !summaryColumnsPopupRef.value.contains(event.target as Node) && 
+      !summaryColumnsBtnRef.value.contains(event.target as Node)) {
+    closeSummaryColumnsPopup()
+  }
+}
+
+function setSummaryColumnVisibility(field: string, visible: boolean) {
+  const api = gridApi.value
+  if (!api) return
+  
+  try {
+    if (typeof api.setColumnsVisible === 'function') {
+      api.setColumnsVisible([field], visible)
+    } else if (typeof api.setColumnVisible === 'function') {
+      api.setColumnVisible(field, visible)
+    }
+  } catch (error) {
+    console.warn('Could not set column visibility:', error)
+  }
+}
+
+// Watch for column visibility changes and update grid
+watch(summaryVisibleCols, (cols) => {
+  writeSummaryVisibleColsToUrl(cols)
+  for (const opt of allSummaryColumnOptions) {
+    setSummaryColumnVisibility(opt.field, isSummaryColVisible(opt.field))
+  }
+}, { deep: true })
+
+// Update column definitions to respect visibility
 const columnDefs = computed<ColDef[]>(() => [
   {
     headerName: 'Account',
@@ -474,6 +557,7 @@ const columnDefs = computed<ColDef[]>(() => [
     },
     pinned: 'left',
     width: 95,
+    hide: !isSummaryColVisible('account'),
     cellRenderer: (params) => {
       if (params.data.isTotal) {
         return `<div class="account-cell total-row">
@@ -499,6 +583,7 @@ const columnDefs = computed<ColDef[]>(() => [
     cellClass: 'number-cell',
     headerClass: 'graph-header',
     flex: 1,
+    hide: !isSummaryColVisible('nlv_val'),
     cellRenderer: (params) => {
       if (params.data.isTotal) {
         return `<span class="cell-value total-cell">${formatCurrency(params.value)}</span>`;
@@ -519,6 +604,7 @@ const columnDefs = computed<ColDef[]>(() => [
     cellClass: 'number-cell',
     headerClass: 'graph-header',
     flex: 1,
+    hide: !isSummaryColVisible('maintenance_val'),
     cellRenderer: (params) => {
       if (params.data.isTotal) {
         return `<span class="cell-value total-cell">${formatCurrency(params.value)}</span>`;
@@ -541,7 +627,8 @@ const columnDefs = computed<ColDef[]>(() => [
       if (params.data.isTotal) return `${baseClass} total-cell`;
       return params.value < 0 ? `${baseClass} negative` : baseClass;
     },
-    flex: 1
+    flex: 1,
+    hide: !isSummaryColVisible('addlGmvAllowedNlvSide')
   },
   {
     headerName: "Add'l GMV to start-reducing threshold",
@@ -552,7 +639,8 @@ const columnDefs = computed<ColDef[]>(() => [
       if (params.data.isTotal) return `${baseClass} total-cell`;
       return params.value < 0 ? `${baseClass} negative` : baseClass;
     },
-    flex: 1
+    flex: 1,
+    hide: !isSummaryColVisible('addlGmvAllowedMaintenanceSide')
   },
 ]);
 
@@ -1017,6 +1105,9 @@ onMounted(() => {
   // Add global click listener to hide context menu
   document.addEventListener('click', hideContextMenu)
   
+  // Add global click listener for column selector
+  document.addEventListener('click', handleSummaryClickOutside)
+  
   // Start container polling
   scheduleContainerPolling()
 })
@@ -1029,6 +1120,7 @@ onBeforeUnmount(() => {
   
   // Remove global click listener
   document.removeEventListener('click', hideContextMenu)
+  document.removeEventListener('click', handleSummaryClickOutside)
   
   // Stop container polling
   pollTimers.forEach(t => clearInterval(t))
@@ -1149,13 +1241,54 @@ function formatToPST(utcTimestamp: string | null): string {
             <router-link v-if="showHeaderLink" to="/summary" class="summary-link">Summary</router-link>
             <span v-else>Summary</span>
           </h2>
-          <button 
-            @click="emit('minimize')"
-            class="minimize-button"
-            title="Minimize Summary"
-          >
-            −
-          </button>
+          <div class="header-tools">
+            <button 
+              ref="summaryColumnsBtnRef" 
+              class="columns-btn" 
+              aria-label="Column settings" 
+              @click.stop="toggleSummaryColumnsPopup"
+              title="Column Settings"
+            >
+              <svg class="icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                <path fill="currentColor" d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.21-.37-.3-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.03-.22-.22-.39-.44-.39h-3.84c-.22 0-.41.16-.44.39l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96c-.22-.09-.47 0-.59.22l-1.92 3.32c-.12.21-.07.47.12.61l2.03 1.58c.04.31.06.63.06.94s-.02.63-.06.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.21.37.3.59.22l2.39.96c.5.38 1.03.7 1.62.94l.36 2.54c.03.22.22.39.44.39h3.84c.22 0 .41-.16.44-.39l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.09.47 0 .59-.22l1.92-3.32c.12-.21.07-.47-.12-.61l-2.03-1.58ZM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5Z"/>
+              </svg>
+            </button>
+            
+            <button 
+              @click="emit('minimize')"
+              class="minimize-button"
+              title="Minimize Summary"
+            >
+              −
+            </button>
+            
+            <!-- Updated Column selector popup to match Positions design -->
+            <div v-if="showSummaryColumnsPopup" ref="summaryColumnsPopupRef" class="columns-dropdown" @click.stop>
+              <div class="columns-header">
+                <span class="columns-title">Columns</span>
+              </div>
+              <div class="columns-content">
+                <label v-for="opt in allSummaryColumnOptions" :key="opt.field" class="column-option">
+                  <input 
+                    type="checkbox" 
+                    :value="opt.field" 
+                    v-model="summaryVisibleCols"
+                    class="column-checkbox"
+                  />
+                  <span class="column-label">{{ opt.label }}</span>
+                </label>
+              </div>
+              <div class="columns-footer">
+                <button 
+                  class="btn-link" 
+                  @click="summaryVisibleCols = allSummaryColumnOptions.map(c => c.field)"
+                >
+                  Show All
+                </button>
+                <button class="btn-done" @click="closeSummaryColumnsPopup">Done</button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- AG Grid Implementation - This should be the ONLY content -->
@@ -1593,403 +1726,203 @@ function formatToPST(utcTimestamp: string | null): string {
   color: #1d4ed8;
 }
 
-/* Context Menu Styles */
-.context-menu {
-  position: fixed;
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-  padding: 4px 0;
-  z-index: 1000;
-  min-width: 200px;
-}
-
-.context-menu-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  cursor: pointer;
-  font-size: 14px;
-  color: #374151;
-  transition: background-color 0.15s ease;
-  position: relative;
-}
-
-.context-menu-item:hover {
-  background-color: #f3f4f6;
-}
-
-.context-menu-item.active {
-  background-color: #dbeafe;
-  color: #1d4ed8;
-}
-
-.context-menu-item.active:hover {
-  background-color: #bfdbfe;
-}
-
-.context-menu-icon {
-  font-size: 16px;
-  flex-shrink: 0;
-}
-
-.context-menu-separator {
-  height: 1px;
-  background-color: #e5e7eb;
-  margin: 4px 0;
-}
-
-.active-indicator {
-  margin-left: auto;
-  color: #10b981;
-  font-size: 12px;
-}
-
-/* New styles for fetched_at info */
-.context-menu-info {
-  display: flex;
-  flex-direction: column;
-  padding: 8px 12px;
-  background-color: #f9fafb;
-  border-top: 1px solid #e5e7eb;
-  font-size: 12px;
-  color: #6b7280;
-}
-
-.context-menu-label {
-  font-weight: 600;
-  margin-bottom: 2px;
-}
-
-.context-menu-value {
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  color: #374151;
-}
-
-/* Chart styles */
-.chart-section h4 {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #1f2a37;
-  margin-bottom: 1rem;
-}
-
-.chart-container {
-  background-color: #ffffff;
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e5e7eb;
-  height: 350px;
-}
-
-.graph-section {
-  margin-top: 1.5rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid #e5e7eb;
-}
-
-.graph-loading, .graph-error, .graph-empty {
-  text-align: center;
-  padding: 2rem;
-  color: #6b7280;
-  font-style: italic;
-}
-
-.graph-error {
-  color: #dc2626;
-}
-
-/* Calculation breakdown styles */
-.calculation-breakdown {
-  margin-top: 1.5rem;
-  padding: 1.5rem;
-  background-color: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e5e7eb;
-}
-
-.breakdown-header {
-  margin-bottom: 1.5rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 2rem;
-}
-
-.breakdown-header-left {
-  flex: 1;
-}
-
-.breakdown-header-left div:first-child {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #1f2a37;
-  margin-bottom: 0.5rem;
-}
-
-.breakdown-header-left div:last-child {
-  font-size: 0.9rem;
-  color: #6b7280;
-  font-style: italic;
-}
-
-.breakdown-header-right {
-  display: flex;
-  align-items: flex-start;
-}
-
-.docker-control-section {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.container-status-badge {
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.container-status-badge.status-online {
-  background-color: #d1fae5;
-  color: #065f46;
-  border: 1px solid #10b981;
-}
-
-.container-status-badge.status-offline {
-  background-color: #fee2e2;
-  color: #991b1b;
-  border: 1px solid #ef4444;
-}
-
-/* Docker control button styles */
-.docker-control-btn {
-  --success-clr: #28a745;
-  --success-hover: #218838;
-  --success-active: #1e7e34;
-  --danger-clr: #dc3545;
-  --danger-hover: #bb2d3b;
-  --danger-active: #a52834;
-  
-  background: transparent;
-  padding: 6px 12px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  border-radius: 6px;
-  cursor: pointer;
-  line-height: 1.2;
-  transition: color 0.15s, background-color 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.1s;
-  min-width: 140px;
-  border: 1px solid;
-  white-space: nowrap;
-}
-
-.docker-control-btn.start-btn {
-  border-color: var(--success-clr);
-  color: var(--success-clr);
-}
-
-.docker-control-btn.start-btn:hover:not(:disabled) {
-  background: var(--success-clr);
-  color: white;
-}
-
-.docker-control-btn.start-btn:active {
-  background: var(--success-active);
-  border-color: var(--success-active);
-  color: white;
-  transform: translateY(1px);
-}
-
-.docker-control-btn.stop-btn {
-  border-color: var(--danger-clr);
-  color: var(--danger-clr);
-}
-
-.docker-control-btn.stop-btn:hover:not(:disabled) {
-  background: var(--danger-clr);
-  color: white;
-}
-
-.docker-control-btn.stop-btn:active {
-  background: var(--danger-active);
-  border-color: var(--danger-active);
-  color: white;
-  transform: translateY(1px);
-}
-
-.docker-control-btn:disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
-}
-
-.docker-control-btn:focus-visible {
-  outline: 0;
-  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.35);
-}
-
-.breakdown-columns {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2rem;
-}
-
-.breakdown-stage {
-  padding: 1.5rem;
-  border-radius: 8px;
-  border: 1px solid #e5e7eb;
-}
-
-.stage-1 {
-  background-color: #fef3c7;
-  border-color: #f59e0b;
-}
-
-.stage-2 {
-  background-color: #fee2e2;
-  border-color: #ef4444;
-}
-
-.stage-header {
-  font-size: 1rem;
-  font-weight: 600;
-  margin-bottom: 1rem;
-  color: #1f2a37;
-}
-
-.stage-item {
-  margin-bottom: 1rem;
-}
-
-.item-label {
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: #374151;
-  margin-bottom: 0.25rem;
-}
-
-.item-value {
-  font-size: 0.85rem;
-}
-
-.formula {
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  color: #1f2937;
-  font-weight: 600;
-}
-
-/* Keep all existing styles */
-.dashboard-container {
-  margin: 0 auto;
-  padding: 2rem;
-  background-color: #f5f6f8;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  border-radius: 12px;
-}
-
+/* Fix header layout to position tools on the right */
 .block-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
+  padding: 0.5rem 0;
 }
 
 .block-header h2 {
-  font-size: 1.5rem;
-  font-weight: 500;
   margin: 0;
-  color: #1f2a37;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.summary-link {
+  color: #3b82f6;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.summary-link:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+.header-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  position: relative;
+  margin-left: auto; /* This ensures the tools are pushed to the right */
 }
 
 .minimize-button {
-  background: #f9fafb;
-  border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
-  width: 1.75rem;
-  height: 1.75rem;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  font-size: 1rem;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
   color: #6b7280;
+  cursor: pointer;
   transition: all 0.2s;
-  flex-shrink: 0;
+  font-size: 18px;
+  font-weight: bold;
 }
 
 .minimize-button:hover {
   background: #f3f4f6;
   border-color: #9ca3af;
   color: #374151;
-  transform: scale(1.05);
 }
 
-.minimize-button:active {
-  transform: scale(0.95);
+.columns-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-.loading, .error {
-  text-align: center;
-  padding: 2rem;
+.columns-btn:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+  color: #374151;
 }
 
-.loading-spinner {
-  border: 4px solid #e2e8f0;
-  border-top: 4px solid #3498db;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  animation: spin 1s linear infinite;
-  margin: 0 auto 1rem;
+.columns-btn .icon {
+  pointer-events: none;
 }
 
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+.columns-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  width: 260px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  z-index: 1000;
+  font-size: 13px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
-.summary-link {
-  color: #1f2a37;
+.columns-header {
+  padding: 8px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  background-color: #fafafa;
+}
+
+.columns-title {
+  font-weight: 600;
+  color: #333;
+  font-size: 13px;
+}
+
+.columns-content {
+  padding: 4px 0;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.column-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  margin: 0;
+  font-size: 13px;
+}
+
+.column-option:hover {
+  background-color: #f8f9fa;
+}
+
+.column-checkbox {
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+  border: 1px solid #ccc;
+  margin: 0;
+  cursor: pointer;
+  accent-color: #007bff;
+}
+
+.column-checkbox:checked {
+  background-color: #007bff;
+  border-color: #007bff;
+}
+
+.column-label {
+  color: #333;
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+  line-height: 1.2;
+}
+
+.columns-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-top: 1px solid #f0f0f0;
+  background-color: #fafafa;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: #6c757d;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
   text-decoration: none;
-  transition: color 0.2s ease;
+  transition: color 0.15s ease;
 }
 
-.summary-link:hover {
-  color: #3b82f6;
+.btn-link:hover {
+  color: #495057;
   text-decoration: underline;
 }
 
-@media (max-width: 768px) {
-  .breakdown-columns {
-    grid-template-columns: 1fr;
-  }
-  
-  .summary-grid {
-    font-size: 0.875rem;
-  }
+.btn-done {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 4px 12px;
+  border-radius: 3px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
 }
 
-/* Pinned bottom row styles */
-:deep(.ag-pinned-bottom-container) {
-  border-top: 2px solid #dee2e6;
+.btn-done:hover {
+  background: #0056b3;
 }
 
-:deep(.ag-row-pinned-bottom) {
-  background-color: #f8f9fa !important;
-  font-weight: bold;
+.btn-done:active {
+  background: #004085;
 }
 
-:deep(.ag-row-pinned-bottom .ag-cell) {
-  background-color: #f8f9fa !important;
-  border-bottom: none;
-}
+/* ...rest of existing styles... */
 </style>
 
 <style>
