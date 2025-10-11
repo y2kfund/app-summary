@@ -551,7 +551,7 @@ const columnDefs = computed<ColDef[]>(() => [
     hide: !isSummaryColVisible('excess_maintenance_margin')
   },
   {
-    headerName: "Add'l GMV to stop-adding threshold",
+    headerName: "Stop-adding threshold (Add'l GMV)",
     field: 'addlGmvAllowedNlvSide',
     valueFormatter: (params) => formatCurrency(params.value),
     cellClass: (params) => {
@@ -563,7 +563,7 @@ const columnDefs = computed<ColDef[]>(() => [
     hide: !isSummaryColVisible('addlGmvAllowedNlvSide')
   },
   {
-    headerName: "Add'l GMV to start-reducing threshold",
+    headerName: "Start-reducing threshold (Add'l GMV)",
     field: 'addlGmvAllowedMaintenanceSide',
     valueFormatter: (params) => formatCurrency(params.value),
     cellClass: (params) => {
