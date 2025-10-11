@@ -581,6 +581,15 @@ function onGridReady(event: any) {
   gridApi.value = event.api;
   columnApiRef.value = event.columnApi;
   
+  // Apply initial filters from URL ONLY ONCE
+  const initialFilters = parseFiltersFromUrl()
+  if (initialFilters.account) {
+    const filterModel = {
+      account: { type: 'equals', filter: initialFilters.account }
+    }
+    event.api.setFilterModel(filterModel)
+  }
+  
   // Add click event listeners for buttons using the grid container element
   const gridElement = document.querySelector('.summary-ag-grid .ag-root-wrapper');
   if (gridElement) {
@@ -625,6 +634,9 @@ function onGridReady(event: any) {
       }
     });
   }
+  
+  // Sync filters AFTER initial setup
+  syncActiveSummaryFiltersFromGrid()
 }
 
 // Grid row data with totals
@@ -1145,6 +1157,9 @@ function handleSummaryAccountCellFilterClick(value: any) {
     api.onFilterChanged()
   }
   
+  // Persist to URL
+  writeFiltersToUrlFromModel(currentModel)
+  
   syncActiveSummaryFiltersFromGrid()
 }
 
@@ -1163,6 +1178,9 @@ function clearSummaryFilter(field: 'account') {
     api.onFilterChanged()
   }
   
+  // Persist to URL
+  writeFiltersToUrlFromModel(currentModel)
+  
   syncActiveSummaryFiltersFromGrid()
 }
 
@@ -1178,17 +1196,50 @@ function clearAllSummaryFilters() {
     api.onFilterChanged()
   }
   
+  // Persist to URL
+  writeFiltersToUrlFromModel({})
+  
   syncActiveSummaryFiltersFromGrid()
 }
 
-// Keep active filter tags in sync whenever filters change via UI
+// Update the grid watcher to prevent infinite loops
+let isUpdatingFromUrl = false
+
 watch(() => gridApi.value, (api) => {
   if (!api) return
+  
   const listener = () => {
-    syncActiveSummaryFiltersFromGrid()
+    if (!isUpdatingFromUrl) {
+      syncActiveSummaryFiltersFromGrid()
+      // Persist filter model to URL
+      const model = api.getFilterModel?.() || {}
+      writeFiltersToUrlFromModel(model)
+    }
   }
+  
   api.addEventListener?.('filterChanged', listener)
 }, { immediate: true })
+
+// Add URL parameter handling functions (missing from your current code)
+function parseFiltersFromUrl(): { account?: string } {
+  const url = new URL(window.location.href)
+  const account = url.searchParams.get('summary_account') || undefined
+  return { account }
+}
+
+function writeFiltersToUrlFromModel(model: any) {
+  const url = new URL(window.location.href)
+  
+  // Handle account filter
+  const acc = model?.account?.filter || ''
+  if (acc) {
+    url.searchParams.set('summary_account', acc)
+  } else {
+    url.searchParams.delete('summary_account')
+  }
+  
+  window.history.replaceState({}, '', url.toString())
+}
 </script>
 
 <template>

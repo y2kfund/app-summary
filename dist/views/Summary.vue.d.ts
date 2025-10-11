@@ -6,5 +6,8 @@ declare const _default: import('vue').DefineComponent<SummaryProps, {}, {}, {}, 
 }>, {
     showHeaderLink: boolean;
     userId: string | null;
-}, {}, {}, {}, string, import('vue').ComponentProvideOptions, false, {}, any>;
+}, {}, {}, {}, string, import('vue').ComponentProvideOptions, false, {
+    summaryColumnsBtnRef: HTMLButtonElement;
+    summaryColumnsPopupRef: HTMLDivElement;
+}, any>;
 export default _default;
