@@ -1904,7 +1904,7 @@ const chartOptions = computed(() => ({
 
 .summary-link:hover {
   color: #1d4ed8;
-  text-decoration: underline;
+  text-decoration: none;
 }
 
 .header-tools {
