@@ -594,22 +594,6 @@ function onGridReady(event: any) {
           gridApi.value.refreshCells();
         }
       }
-      
-      if (target.classList.contains('account-name') && !target.closest('.total-row')) {
-        // For account name clicks, we need to find the account ID differently
-        // Let's get it from the row data instead of trying to navigate DOM
-        const rowNode = gridApi.value?.getDisplayedRowAtIndex(
-          target.closest('.ag-row')?.getAttribute('row-index') || '0'
-        );
-        if (rowNode?.data && !rowNode.data.isTotal) {
-          const accountId = typeof rowNode.data.nlv_internal_account_id === 'string' 
-            ? parseInt(rowNode.data.nlv_internal_account_id) 
-            : rowNode.data.nlv_internal_account_id;
-          if (accountId) {
-            updateClientInRoute(accountId);
-          }
-        }
-      }
     });
 
     // Update right-click event listener to detect column
