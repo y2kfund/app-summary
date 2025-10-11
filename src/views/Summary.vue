@@ -45,7 +45,7 @@ const emit = defineEmits<{
 const gridApi = ref<GridApi | null>(null)
 const columnApiRef = ref<ColumnApi | null>(null)
 
-const q = useNlvMarginQuery(10000, props.userId)
+const q = useNlvMarginQuery(10, props.userId)
 
 // State for graph visibility and selected account
 const graphVisibility: { [key: number]: { nlv: boolean; mm: boolean } } = reactive({});
@@ -174,133 +174,22 @@ const maintenanceHistoryQuery = useQuery({
 })
 
 // Helper function to format numbers as currency
-function formatCurrency(value: number | null | undefined): string {
+function formatCurrency(value: number | string | null | undefined): string {
   if (value === null || value === undefined) return '$0'
+  
+  // Convert string to number if needed
+  const numValue = typeof value === 'string' ? parseFloat(value) : value
+  
+  // Check if conversion resulted in NaN
+  if (isNaN(numValue)) return '$0'
+  
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0
-  }).format(value)
+  }).format(numValue)
 }
-
-// Function to toggle graph visibility
-function toggleGraph(accountId: number, type: 'nlv' | 'mm') {
-  console.log('🔄 Toggle graph called:', { accountId, type })
-  
-  if (!graphVisibility[accountId]) {
-    graphVisibility[accountId] = { nlv: false, mm: false }
-  }
-  
-  const wasVisible = graphVisibility[accountId][type]
-  
-  // Close all other graphs first
-  Object.keys(graphVisibility).forEach(id => {
-    const numId = parseInt(id)
-    if (graphVisibility[numId]) {
-      graphVisibility[numId].nlv = false
-      graphVisibility[numId].mm = false
-    }
-  })
-  
-  // Toggle the clicked graph
-  graphVisibility[accountId][type] = !wasVisible
-  
-  // Set the selected account and graph type for history query
-  if (graphVisibility[accountId][type]) {
-    console.log('📊 Setting selected account for history:', accountId, 'type:', type)
-    selectedAccountForHistory.value = accountId
-    selectedGraphType.value = type
-  } else {
-    console.log('❌ Clearing selected account for history')
-    selectedAccountForHistory.value = null
-    selectedGraphType.value = null
-  }
-  
-  console.log('📈 Graph visibility state:', graphVisibility)
-  console.log('🎯 Selected account for history:', selectedAccountForHistory.value, 'type:', selectedGraphType.value)
-}
-
-// Get the appropriate query based on selected type
-const currentHistoryQuery = computed(() => {
-  if (selectedGraphType.value === 'nlv') {
-    return nlvHistoryQuery
-  } else if (selectedGraphType.value === 'mm') {
-    return maintenanceHistoryQuery
-  }
-  return null
-})
-
-// Chart.js data and options
-const chartData = computed(() => {
-  const query = currentHistoryQuery.value
-  if (!query?.data.value?.length) return null
-  
-  const data = query.data.value
-  const labels = data.map(item => new Date(item.fetched_at).toLocaleDateString())
-  
-  const isNlv = selectedGraphType.value === 'nlv'
-  const values = data.map(item => isNlv ? item.nlv : item.maintenance)
-  
-  return {
-    labels,
-    datasets: [
-      {
-        label: isNlv ? 'Net Liquidation Value' : 'Maintenance Margin',
-        data: values,
-        borderColor: isNlv ? '#3b82f6' : '#f59e0b',
-        backgroundColor: isNlv ? 'rgba(59, 130, 246, 0.1)' : 'rgba(245, 158, 11, 0.1)',
-        borderWidth: 3,
-        pointRadius: 4,
-        pointHoverRadius: 6,
-        tension: 0.1,
-        fill: true
-      }
-    ]
-  }
-})
-
-const chartOptions = computed(() => ({
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      display: true,
-      position: 'top' as const
-    },
-    title: {
-      display: false
-    },
-    tooltip: {
-      callbacks: {
-        label: function(context: any) {
-          return formatCurrency(context.parsed.y)
-        }
-      }
-    }
-  },
-  scales: {
-    x: {
-      display: true,
-      title: {
-        display: true,
-        text: 'Date'
-      }
-    },
-    y: {
-      display: true,
-      title: {
-        display: true,
-        text: 'Value'
-      },
-      ticks: {
-        callback: function(value: any) {
-          return formatCurrency(value)
-        }
-      }
-    }
-  }
-}))
 
 function calculateGmax(nlv: number, maintenance_margin_caled_m: number, drop_called_d: number): number {
   const part1 = 1 - drop_called_d;
@@ -318,12 +207,20 @@ const calculatedMetrics = computed(() => {
     const maxGmvMaintenanceSide = calculateGmax(item.nlv_val, 0.30, 0.10);
     const mkNlvSide = (maxGmvNlvSide * 30) / 100;
     const mkMaintenanceSide = (maxGmvMaintenanceSide * 30) / 100;
-    const maintnanceMarginHeadroomNlvSide = mkNlvSide - item.maintenance_val;
-    const maintnanceMarginHeadroomMaintenanceSide = mkMaintenanceSide - item.maintenance_val;
+    
+    // Convert maintenance_val from string to number for calculations
+    const maintenanceValue = typeof item.maintenance_val === 'string' 
+      ? parseFloat(item.maintenance_val) 
+      : item.maintenance_val;
+    
+    const maintnanceMarginHeadroomNlvSide = mkNlvSide - maintenanceValue;
+    const maintnanceMarginHeadroomMaintenanceSide = mkMaintenanceSide - maintenanceValue;
     const addlGmvAllowedNlvSide = (maintnanceMarginHeadroomNlvSide * 100) / 30;
     const addlGmvAllowedMaintenanceSide = (maintnanceMarginHeadroomMaintenanceSide * 100) / 30;
+    
     return {
       ...item,
+      maintenance_val_numeric: maintenanceValue, // Add numeric version for calculations
       maxGmvNlvSide,
       maxGmvMaintenanceSide,
       mkNlvSide,
@@ -336,7 +233,6 @@ const calculatedMetrics = computed(() => {
   });
 });
 
-// Computed property for filtered metrics based on URL parameter
 const filteredMetrics = computed(() => {
   if (!selectedClientFromUrl.value || !calculatedMetrics.value) {
     return calculatedMetrics.value;
@@ -359,7 +255,16 @@ const filteredMetrics = computed(() => {
 const allAccountsSummary = computed(() => {
   if (!calculatedMetrics.value) return null;
   const totalNlv = calculatedMetrics.value.reduce((sum, item) => sum + (item.nlv_val || 0), 0);
-  const totalMaintenance = calculatedMetrics.value.reduce((sum, item) => sum + (item.maintenance_val || 0), 0);
+  
+  // Use the numeric version for totals calculation
+  const totalMaintenance = calculatedMetrics.value.reduce((sum, item) => {
+    const maintenanceValue = typeof item.maintenance_val === 'string' 
+      ? parseFloat(item.maintenance_val) 
+      : item.maintenance_val;
+    return sum + (isNaN(maintenanceValue) ? 0 : maintenanceValue);
+  }, 0);
+  
+  const totalExcessMaintenance = calculatedMetrics.value.reduce((sum, item) => sum + (item.excess_maintenance_margin || 0), 0);
   
   const totalAddlGmvToStopReducing = calculatedMetrics.value.reduce((sum, item) => sum + (item.addlGmvAllowedNlvSide || 0), 0); 
   const totalAddlGmvToStartReducing = calculatedMetrics.value.reduce((sum, item) => sum + (item.addlGmvAllowedMaintenanceSide || 0), 0); 
@@ -367,6 +272,7 @@ const allAccountsSummary = computed(() => {
   return {
     totalNlv: totalNlv,
     totalMaintenance: totalMaintenance,
+    totalExcessMaintenance: totalExcessMaintenance,
     totalAddlGmvToStopReducing: totalAddlGmvToStopReducing,
     totalAddlGmvToStartReducing: totalAddlGmvToStartReducing
   };
@@ -451,12 +357,13 @@ function showAllAccounts() {
 }
 
 // Add column visibility management after the existing reactive variables
-type SummaryColumnField = 'account' | 'nlv_val' | 'maintenance_val' | 'addlGmvAllowedNlvSide' | 'addlGmvAllowedMaintenanceSide'
+type SummaryColumnField = 'account' | 'nlv_val' | 'maintenance_val' | 'excess_maintenance_margin' | 'addlGmvAllowedNlvSide' | 'addlGmvAllowedMaintenanceSide'
 
 const allSummaryColumnOptions: Array<{ field: SummaryColumnField; label: string }> = [
   { field: 'account', label: 'Account' },
   { field: 'nlv_val', label: 'NLV' },
   { field: 'maintenance_val', label: 'Maintenance Margin' },
+  { field: 'excess_maintenance_margin', label: 'Excess Maintenance Margin' }, // Add this line
   { field: 'addlGmvAllowedNlvSide', label: "Add'l GMV to stop-adding threshold" },
   { field: 'addlGmvAllowedMaintenanceSide', label: "Add'l GMV to start-reducing threshold" }
 ]
@@ -600,7 +507,11 @@ const columnDefs = computed<ColDef[]>(() => [
   {
     headerName: 'Maintenance Margin',
     field: 'maintenance_val',
-    valueFormatter: (params) => formatCurrency(params.value),
+    valueFormatter: (params) => {
+      // Convert string to number for formatting
+      const value = typeof params.value === 'string' ? parseFloat(params.value) : params.value;
+      return formatCurrency(value);
+    },
     cellClass: 'number-cell',
     headerClass: 'graph-header',
     flex: 1,
@@ -613,10 +524,26 @@ const columnDefs = computed<ColDef[]>(() => [
         ? parseInt(params.data.nlv_internal_account_id) 
         : params.data.nlv_internal_account_id;
       const isActive = graphVisibility[accountId]?.mm;
+      
+      // Convert string to number for display
+      const value = typeof params.value === 'string' ? parseFloat(params.value) : params.value;
+      
       return `<div class="cell-with-graph">
-        <span class="cell-value">${formatCurrency(params.value)}</span>
+        <span class="cell-value">${formatCurrency(value)}</span>
       </div>`;
     }
+  },
+  {
+    headerName: 'Excess Maintenance Margin',
+    field: 'excess_maintenance_margin',
+    valueFormatter: (params) => formatCurrency(params.value),
+    cellClass: (params) => {
+      const baseClass = 'number-cell';
+      if (params.data.isTotal) return `${baseClass} total-cell`;
+      return params.value < 0 ? `${baseClass} negative` : baseClass;
+    },
+    flex: 1,
+    hide: !isSummaryColVisible('excess_maintenance_margin')
   },
   {
     headerName: "Add'l GMV to stop-adding threshold",
@@ -723,6 +650,7 @@ const gridRowData = computed(() => {
       nlv_internal_account_id: -1,
       nlv_val: allAccountsSummary.value.totalNlv,
       maintenance_val: allAccountsSummary.value.totalMaintenance,
+      excess_maintenance_margin: allAccountsSummary.value.totalExcessMaintenance,
       addlGmvAllowedNlvSide: allAccountsSummary.value.totalAddlGmvToStopReducing,
       addlGmvAllowedMaintenanceSide: allAccountsSummary.value.totalAddlGmvToStartReducing,
       isTotal: true
@@ -744,6 +672,7 @@ const pinnedBottomRowData = computed(() => {
       nlv_internal_account_id: -1,
       nlv_val: allAccountsSummary.value.totalNlv,
       maintenance_val: allAccountsSummary.value.totalMaintenance,
+      excess_maintenance_margin: allAccountsSummary.value.totalExcessMaintenance,
       addlGmvAllowedNlvSide: allAccountsSummary.value.totalAddlGmvToStopReducing,
       addlGmvAllowedMaintenanceSide: allAccountsSummary.value.totalAddlGmvToStartReducing,
       isTotal: true
