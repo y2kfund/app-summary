@@ -1027,6 +1027,11 @@ onMounted(() => {
   
   // Start container polling
   scheduleContainerPolling()
+  
+  // Listen for account filter changes from other components
+  if (eventBus) {
+    eventBus.on('account-filter-changed', handleExternalAccountFilter)
+  }
 })
 
 // Update your existing onBeforeUnmount
@@ -1042,6 +1047,11 @@ onBeforeUnmount(() => {
   // Stop container polling
   pollTimers.forEach(t => clearInterval(t))
   pollTimers.length = 0
+  
+  // Clean up event listener
+  if (eventBus) {
+    eventBus.off('account-filter-changed', handleExternalAccountFilter)
+  }
 })
 
 // Add computed property to determine which menu items to show
@@ -1142,13 +1152,64 @@ function syncActiveSummaryFiltersFromGrid() {
   activeSummaryFilters.value = next
 }
 
+function handleExternalAccountFilter(payload: { accountId: string | null, source: string }) {
+  console.log('📊 [Summary] Received account filter:', payload)
+  
+  // Ignore if this component is the source
+  if (payload.source === 'summary') return
+  
+  const api = gridApi.value
+  if (!api) {
+    console.warn('📊 [Summary] Grid API not ready')
+    return
+  }
+  
+  isUpdatingFromUrl = true
+  
+  if (payload.accountId) {
+    // Apply filter to the account column
+    const currentModel = (api.getFilterModel && api.getFilterModel()) || {}
+    currentModel.account = { 
+      filterType: 'text',
+      type: 'equals', 
+      filter: payload.accountId 
+    }
+    
+    console.log('📊 [Summary] Applying filter model:', currentModel)
+    
+    if (typeof api.setFilterModel === 'function') {
+      api.setFilterModel(currentModel)
+    }
+    if (typeof api.onFilterChanged === 'function') {
+      api.onFilterChanged()
+    }
+    
+    // Update URL
+    writeFiltersToUrlFromModel(currentModel)
+  } else {
+    // Clear the account filter
+    clearSummaryFilter('account')
+  }
+  
+  syncActiveSummaryFiltersFromGrid()
+  
+  setTimeout(() => {
+    isUpdatingFromUrl = false
+  }, 100)
+}
+
+// Update handleSummaryAccountCellFilterClick to emit events (around line 1143)
 function handleSummaryAccountCellFilterClick(value: any) {
   const api = gridApi.value
   if (!api || value === undefined || value === null) return
   
   // Use normal ag-Grid filters for account field
   const currentModel = (api.getFilterModel && api.getFilterModel()) || {}
-  currentModel.account = { type: 'equals', filter: String(value) }
+  currentModel.account = { 
+    filterType: 'text',
+    type: 'equals', 
+    filter: String(value) 
+  }
   
   if (typeof api.setFilterModel === 'function') {
     api.setFilterModel(currentModel)
@@ -1161,14 +1222,27 @@ function handleSummaryAccountCellFilterClick(value: any) {
   writeFiltersToUrlFromModel(currentModel)
   
   syncActiveSummaryFiltersFromGrid()
+  
+  // Emit event for synchronization
+  if (eventBus) {
+    console.log('📊 [Summary] Emitting account filter change')
+    eventBus.emit('account-filter-changed', {
+      accountId: String(value),
+      source: 'summary'
+    })
+  }
 }
 
+// Update clearSummaryFilter to emit events (around line 1158)
 function clearSummaryFilter(field: 'account') {
   const api = gridApi.value
   if (!api) return
   
-  // Clear ag-Grid filter for the field
+  // Check if account filter was active before clearing
   const currentModel = (api.getFilterModel && api.getFilterModel()) || {}
+  const hadAccountFilter = !!currentModel[field]
+  
+  // Clear ag-Grid filter for the field
   delete currentModel[field]
   
   if (typeof api.setFilterModel === 'function') {
@@ -1182,11 +1256,25 @@ function clearSummaryFilter(field: 'account') {
   writeFiltersToUrlFromModel(currentModel)
   
   syncActiveSummaryFiltersFromGrid()
+  
+  // Emit event for synchronization if filter was active
+  if (hadAccountFilter && eventBus) {
+    console.log('📊 [Summary] Clearing account filter via event')
+    eventBus.emit('account-filter-changed', {
+      accountId: null,
+      source: 'summary'
+    })
+  }
 }
 
+// Update clearAllSummaryFilters to emit events (around line 1175)
 function clearAllSummaryFilters() {
   const api = gridApi.value
   if (!api) return
+  
+  // Check if account filter was active
+  const currentModel = api.getFilterModel?.() || {}
+  const hadAccountFilter = !!currentModel.account
   
   // Clear all ag-Grid filters
   if (typeof api.setFilterModel === 'function') {
@@ -1200,6 +1288,15 @@ function clearAllSummaryFilters() {
   writeFiltersToUrlFromModel({})
   
   syncActiveSummaryFiltersFromGrid()
+  
+  // Emit event if account filter was cleared
+  if (hadAccountFilter && eventBus) {
+    console.log('📊 [Summary] Clearing all filters via event')
+    eventBus.emit('account-filter-changed', {
+      accountId: null,
+      source: 'summary'
+    })
+  }
 }
 
 // Update the grid watcher to prevent infinite loops
