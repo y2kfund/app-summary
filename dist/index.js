@@ -46898,7 +46898,7 @@ const c_ = /* @__PURE__ */ d_("line", On), u_ = { class: "notification-container
   for (const [s, o] of t)
     i[s] = o;
   return i;
-}, BH = /* @__PURE__ */ MH(TH, [["__scopeId", "data-v-907b00ea"]]);
+}, BH = /* @__PURE__ */ MH(TH, [["__scopeId", "data-v-7a46f16a"]]);
 export {
   BH as Summary,
   BH as default

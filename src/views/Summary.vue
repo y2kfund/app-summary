@@ -1983,7 +1983,7 @@ const chartOptions = computed(() => ({
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1rem;
-  padding: 0.5rem 0;
+  /* padding: 0.5rem 0; */
 }
 
 .block-header h2 {
@@ -2001,7 +2001,7 @@ const chartOptions = computed(() => ({
 
 .summary-link:hover {
   color: #1d4ed8;
-  text-decoration: underline;
+  text-decoration: none;
 }
 
 .header-tools {
