@@ -1135,7 +1135,10 @@ async function checkContainerStatus(containerName: string) {
   state.isLoading = true
   
   try {
-    const response = await fetch(`${DOCKER_CONTROL_URL}?action=status&container=${containerName}`)
+    const url = containerName === 'vk' 
+    ? `https://ibkr.vk.to5001.aiworkspace.pro/api/maintenance`
+    : `https://ibkr.${containerName}.to5001.aiworkspace.pro/api/maintenance`
+    const response = await fetch(url) 
     const data = await response.json()
     
     if (data.success) {
@@ -1146,7 +1149,7 @@ async function checkContainerStatus(containerName: string) {
       state.lastError = data.error || 'Unknown error'
     }
   } catch (error) {
-    console.error(`Error checking ${containerName} status:`, error)
+    //console.error(`Error checking ${containerName} status:`, error)
     state.lastError = String(error)
   } finally {
     state.isLoading = false
