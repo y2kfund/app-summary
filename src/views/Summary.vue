@@ -450,7 +450,8 @@ function initializeTabulator() {
       title: 'Account',
       field: 'account',
       frozen: true,
-      headerSort: false, // Disable sorting for this column since it has action button
+      headerSort: false,
+      width: summaryColumnWidths.value['account'] || undefined, // Apply saved width
       formatter: (cell: any) => {
         const data = cell.getRow().getData()
         if (data.isTotal) {
@@ -484,6 +485,7 @@ function initializeTabulator() {
       title: 'NLV',
       field: 'nlv_val',
       hozAlign: 'right',
+      width: summaryColumnWidths.value['nlv_val'] || undefined, // Apply saved width
       formatter: (cell: any) => {
         const data = cell.getRow().getData()
         const value = formatCurrency(cell.getValue())
@@ -507,6 +509,7 @@ function initializeTabulator() {
       title: 'Maintenance Margin',
       field: 'maintenance_val',
       hozAlign: 'right',
+      width: summaryColumnWidths.value['maintenance_val'] || undefined, // Apply saved width
       formatter: (cell: any) => {
         const data = cell.getRow().getData()
         const value = typeof cell.getValue() === 'string' ? parseFloat(cell.getValue()) : cell.getValue()
@@ -534,6 +537,7 @@ function initializeTabulator() {
       title: 'Excess Maintenance Margin',
       field: 'excess_maintenance_margin',
       hozAlign: 'right',
+      width: summaryColumnWidths.value['excess_maintenance_margin'] || undefined, // Apply saved width
       formatter: (cell: any) => {
         const value = cell.getValue()
         const formatted = formatCurrency(value)
@@ -553,6 +557,7 @@ function initializeTabulator() {
       title: "Stop-adding threshold (Add'l GMV)",
       field: 'addlGmvAllowedNlvSide',
       hozAlign: 'right',
+      width: summaryColumnWidths.value['addlGmvAllowedNlvSide'] || undefined, // Apply saved width
       formatter: (cell: any) => {
         const value = cell.getValue()
         const formatted = formatCurrency(value)
@@ -572,6 +577,7 @@ function initializeTabulator() {
       title: "Start-reducing threshold (Add'l GMV)",
       field: 'addlGmvAllowedMaintenanceSide',
       hozAlign: 'right',
+      width: summaryColumnWidths.value['addlGmvAllowedMaintenanceSide'] || undefined, // Apply saved width
       formatter: (cell: any) => {
         const value = cell.getValue()
         const formatted = formatCurrency(value)
@@ -608,6 +614,18 @@ function initializeTabulator() {
           element.style.fontWeight = 'bold'
         }
       }
+    })
+
+    // Add event listener for column resize
+    tabulator.on('columnResized', (column: any) => {
+      const field = column.getField()
+      const width = column.getWidth()
+      
+      // Update the stored widths
+      summaryColumnWidths.value[field] = width
+      
+      // Save to URL
+      writeSummaryColumnWidthsToUrl(summaryColumnWidths.value)
     })
 
     // Add event listener for header close buttons
@@ -1208,6 +1226,46 @@ function removeNotification(id: number) {
     notifications.value.splice(index, 1)
   }
 }
+
+// Add URL parameter helpers for column widths
+function parseSummaryColumnWidthsFromUrl(): Record<string, number> {
+  const url = new URL(window.location.href)
+  const widthsParam = url.searchParams.get('summary_col_widths')
+  if (!widthsParam) return {}
+  
+  try {
+    const pairs = widthsParam.split('-and-')
+    const widths: Record<string, number> = {}
+    pairs.forEach(pair => {
+      const [field, width] = pair.split(':')
+      if (field && width) {
+        widths[field] = parseInt(width)
+      }
+    })
+    return widths
+  } catch (error) {
+    console.warn('Error parsing column widths from URL:', error)
+    return {}
+  }
+}
+
+function writeSummaryColumnWidthsToUrl(widths: Record<string, number>) {
+  const url = new URL(window.location.href)
+  const widthPairs = Object.entries(widths)
+    .filter(([_, width]) => width > 0)
+    .map(([field, width]) => `${field}:${width}`)
+    .join('-and-')
+  
+  if (widthPairs) {
+    url.searchParams.set('summary_col_widths', widthPairs)
+  } else {
+    url.searchParams.delete('summary_col_widths')
+  }
+  window.history.replaceState({}, '', url.toString())
+}
+
+// Store column widths
+const summaryColumnWidths = ref<Record<string, number>>(parseSummaryColumnWidthsFromUrl())
 </script>
 
 <template>
@@ -1517,6 +1575,181 @@ function removeNotification(id: number) {
 </style>
 
 <style scoped>
+/* Update the breakdown section styles */
+.calculation-breakdown {
+  margin-top: 1.5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+  background: white;
+}
+
+.breakdown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.breakdown-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.breakdown-header-left > div:first-child {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.breakdown-header-left > div:last-child {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-style: italic;
+}
+
+.breakdown-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.breakdown-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+
+.breakdown-stage {
+  padding: 1.5rem;
+}
+
+.breakdown-stage.stage-1 {
+  border-right: 1px solid #e5e7eb;
+  background: #fffbeb;
+}
+
+.breakdown-stage.stage-2 {
+  background: #fef2f2;
+}
+
+.stage-header {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid currentColor;
+}
+
+.breakdown-stage.stage-1 .stage-header {
+  color: #f59e0b;
+  border-color: #fbbf24;
+}
+
+.breakdown-stage.stage-2 .stage-header {
+  color: #dc2626;
+  border-color: #f87171;
+}
+
+.stage-item {
+  margin-bottom: 1.25rem;
+}
+
+.stage-item:last-child {
+  margin-bottom: 0;
+}
+
+.item-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+.item-value {
+  background: white;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+}
+
+.formula {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.875rem;
+  color: #1f2937;
+  display: block;
+  line-height: 1.6;
+}
+
+/* Docker control section styles */
+.docker-control-section {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.container-status-badge {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.status-online {
+  background-color: #d1fae5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.status-offline {
+  background-color: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.docker-control-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  border: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.start-btn {
+  background: #10b981;
+  color: white;
+}
+
+.start-btn:hover:not(:disabled) {
+  background: #059669;
+}
+
+.stop-btn {
+  background: #ef4444;
+  color: white;
+}
+
+.stop-btn:hover:not(:disabled) {
+  background: #dc2626;
+}
+
+.docker-control-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* 17. UPDATE grid styles - REMOVE all AG Grid specific styles */
 /* REMOVE all :deep(.ag-*) styles */
 
