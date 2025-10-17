@@ -9,5 +9,6 @@ declare const _default: import('vue').DefineComponent<SummaryProps, {}, {}, {}, 
 }, {}, {}, {}, string, import('vue').ComponentProvideOptions, false, {
     summaryColumnsBtnRef: HTMLButtonElement;
     summaryColumnsPopupRef: HTMLDivElement;
+    tableDiv: HTMLDivElement;
 }, any>;
 export default _default;
