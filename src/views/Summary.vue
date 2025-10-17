@@ -430,11 +430,10 @@ function handleSummaryClickOutside(event: Event) {
 watch(summaryVisibleCols, (cols) => {
   writeSummaryVisibleColsToUrl(cols)
   
-  if (!tabulator) return
-  
-  for (const opt of allSummaryColumnOptions) {
-    setSummaryColumnVisibility(opt.field, isSummaryColVisible(opt.field))
-  }
+  // Rebuild table instead of trying to show/hide columns
+  nextTick(() => {
+    initializeTabulator()
+  })
 }, { deep: true })
 
 // 3. ADD Tabulator initialization function (REPLACE onGridReady)
@@ -450,8 +449,8 @@ function initializeTabulator() {
     {
       title: 'Account',
       field: 'account',
-      //width: 120,
       frozen: true,
+      headerSort: false, // Disable sorting for this column since it has action button
       formatter: (cell: any) => {
         const data = cell.getRow().getData()
         if (data.isTotal) {
@@ -467,6 +466,11 @@ function initializeTabulator() {
         return `<div class="account-cell clickable-account">
           <span class="account-name">${data.legal_entity || data.account}</span>
           <span class="status-badge ${statusClass}">${status}</span>
+        </div>`
+      },
+      titleFormatter: (cell: any) => {
+        return `<div class="header-with-close">
+          <span>Account</span>
         </div>`
       },
       cellClick: (e: any, cell: any) => {
@@ -490,6 +494,12 @@ function initializeTabulator() {
           <span class="cell-value">${value}</span>
         </div>`
       },
+      titleFormatter: (cell: any) => {
+        return `<div class="header-with-close">
+          <span>NLV</span>
+          <button class="header-close-btn" data-field="nlv_val" title="Hide column">✕</button>
+        </div>`
+      },
       bottomCalc: 'sum',
       bottomCalcFormatter: (cell: any) => formatCurrency(cell.getValue())
     },
@@ -508,6 +518,12 @@ function initializeTabulator() {
           <span class="cell-value">${formatted}</span>
         </div>`
       },
+      titleFormatter: (cell: any) => {
+        return `<div class="header-with-close">
+          <span>Maintenance Margin</span>
+          <button class="header-close-btn" data-field="maintenance_val" title="Hide column">✕</button>
+        </div>`
+      },
       bottomCalc: 'sum',
       bottomCalcFormatter: (cell: any) => {
         const value = typeof cell.getValue() === 'string' ? parseFloat(cell.getValue()) : cell.getValue()
@@ -524,6 +540,12 @@ function initializeTabulator() {
         const isNegative = value < 0
         return `<span class="${isNegative ? 'negative' : ''}">${formatted}</span>`
       },
+      titleFormatter: (cell: any) => {
+        return `<div class="header-with-close">
+          <span>Excess Maintenance Margin</span>
+          <button class="header-close-btn" data-field="excess_maintenance_margin" title="Hide column">✕</button>
+        </div>`
+      },
       bottomCalc: 'sum',
       bottomCalcFormatter: (cell: any) => formatCurrency(cell.getValue())
     },
@@ -536,6 +558,12 @@ function initializeTabulator() {
         const formatted = formatCurrency(value)
         const isNegative = value < 0
         return `<span class="${isNegative ? 'negative' : ''}">${formatted}</span>`
+      },
+      titleFormatter: (cell: any) => {
+        return `<div class="header-with-close">
+          <span>Stop-adding threshold (Add'l GMV)</span>
+          <button class="header-close-btn" data-field="addlGmvAllowedNlvSide" title="Hide column">✕</button>
+        </div>`
       },
       bottomCalc: 'sum',
       bottomCalcFormatter: (cell: any) => formatCurrency(cell.getValue())
@@ -550,6 +578,12 @@ function initializeTabulator() {
         const isNegative = value < 0
         return `<span class="${isNegative ? 'negative' : ''}">${formatted}</span>`
       },
+      titleFormatter: (cell: any) => {
+        return `<div class="header-with-close">
+          <span>Start-reducing threshold (Add'l GMV)</span>
+          <button class="header-close-btn" data-field="addlGmvAllowedMaintenanceSide" title="Hide column">✕</button>
+        </div>`
+      },
       bottomCalc: 'sum',
       bottomCalcFormatter: (cell: any) => formatCurrency(cell.getValue())
     }
@@ -560,7 +594,7 @@ function initializeTabulator() {
       data: gridRowData.value,
       columns,
       layout: 'fitColumns',
-      height: 'auto', // CHANGED: from '400px' to 'auto' for content-based height
+      height: 'auto',
       placeholder: 'No data available',
       columnDefaults: {
         resizable: true,
@@ -574,6 +608,20 @@ function initializeTabulator() {
           element.style.fontWeight = 'bold'
         }
       }
+    })
+
+    // Add event listener for header close buttons
+    tabulator.on('tableBuilt', () => {
+      const headers = tableDiv.value?.querySelectorAll('.header-close-btn')
+      headers?.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation() // Prevent sorting
+          const field = (e.target as HTMLElement).getAttribute('data-field') as SummaryColumnField
+          if (field) {
+            hideColumnFromHeader(field)
+          }
+        })
+      })
     })
 
     tabulator.on('cellContext', (e: any, cell: any) => {
@@ -592,6 +640,20 @@ function initializeTabulator() {
     syncActiveSummaryFiltersFromGrid()
   } catch (error) {
     console.error('Error creating Tabulator:', error)
+  }
+}
+
+// Add function to hide column from header
+function hideColumnFromHeader(field: SummaryColumnField) {
+  const index = summaryVisibleCols.value.indexOf(field)
+  if (index > -1) {
+    summaryVisibleCols.value.splice(index, 1)
+    writeSummaryVisibleColsToUrl(summaryVisibleCols.value)
+    
+    // Rebuild table with new columns
+    nextTick(() => {
+      initializeTabulator()
+    })
   }
 }
 
@@ -733,8 +795,10 @@ function handleExternalAccountFilter(payload: { accountId: string | null, source
   syncActiveSummaryFiltersFromGrid()
 }
 
-// 10. UPDATE setSummaryColumnVisibility
+// 10. UPDATE setSummaryColumnVisibility - can be simplified or removed since we're rebuilding
 function setSummaryColumnVisibility(field: string, visible: boolean) {
+  // This function is no longer needed since we rebuild the table
+  // Keep it for now in case there are other references, but it won't be used
   if (!tabulator) return
   
   try {
@@ -748,7 +812,7 @@ function setSummaryColumnVisibility(field: string, visible: boolean) {
   }
 }
 
-// 11. ADD watchers for data and column changes
+// 11. UPDATE watchers for data and column changes
 watch([() => q.data.value, selectedClientFromUrl], () => {
   if (!tabulator) return
   
@@ -760,11 +824,10 @@ watch([() => q.data.value, selectedClientFromUrl], () => {
 watch(summaryVisibleCols, (cols) => {
   writeSummaryVisibleColsToUrl(cols)
   
-  if (!tabulator) return
-  
-  for (const opt of allSummaryColumnOptions) {
-    setSummaryColumnVisibility(opt.field, isSummaryColVisible(opt.field))
-  }
+  // Rebuild table instead of trying to show/hide columns
+  nextTick(() => {
+    initializeTabulator()
+  })
 }, { deep: true })
 
 // 12. UPDATE onMounted
@@ -1969,7 +2032,7 @@ function removeNotification(id: number) {
 }
 
 .context-menu-icon {
-  font-size: 16px;
+   font-size: 16px;
   width: 20px;
   text-align: center;
   flex-shrink: 0;
@@ -2007,194 +2070,39 @@ function removeNotification(id: number) {
   color: #1e293b;
 }
 
-/* Graph Section Styles */
-.graph-section {
-  margin-top: 2rem;
-  padding: 1.5rem;
-  background: #f8fafc;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-}
-
-.graph-loading, .graph-error, .graph-empty {
-  padding: 2rem;
-  text-align: center;
-  color: #64748b;
-  font-style: italic;
-}
-
-.graph-error {
-  color: #dc2626;
-}
-
-.chart-section h4 {
-  margin: 0 0 1rem 0;
-  color: #1e293b;
-  font-size: 1.125rem;
-  font-weight: 600;
-}
-
-.chart-container {
-  height: 300px;
-  background: white;
-  border-radius: 6px;
-  padding: 1rem;
-  border: 1px solid #e2e8f0;
-}
-
-/* Calculation Breakdown Styles - Restore the old design */
-.calculation-breakdown {
-  margin-top: 2rem;
-  padding: 1.5rem;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.breakdown-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 1.5rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.breakdown-header-left div:first-child {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: #1e293b;
-  margin-bottom: 0.5rem;
-}
-
-.breakdown-header-left div:last-child {
-  font-size: 0.875rem;
-  color: #64748b;
-  font-style: italic;
-}
-
-.breakdown-header-right {
+/* Header close button styles */
+:deep(.header-with-close) {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
 }
 
-.container-status-badge {
+:deep(.header-close-btn) {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-.status-online {
-  background-color: #dcfce7;
-  color: #166534;
-  border: 1px solid #bbf7d0;
-}
-
-.status-offline {
-  background-color: #fee2e2;
-  color: #991b1b;
-  border: 1px solid #fecaca;
-}
-
-.docker-control-btn {
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  border: 1px solid;
-  font-size: 0.875rem;
-  font-weight: 500;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  border: none;
+  background: transparent;
+  color: #9ca3af;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+  flex-shrink: 0;
 }
 
-.start-btn {
-  background-color: #22c55e;
-  color: white;
-  border-color: #16a34a;
+:deep(.header-close-btn:hover) {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
 }
 
-.start-btn:hover:not(:disabled) {
-  background-color: #16a34a;
-}
-
-.stop-btn {
-  background-color: #ef4444;
-  color: white;
-  border-color: #dc2626;
-  width: auto;
-}
-
-.stop-btn:hover:not(:disabled) {
-  background-color: #dc2626;
-}
-
-.docker-control-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.breakdown-columns {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2rem;
-}
-
-.breakdown-stage {
-  padding: 1.5rem;
-  border-radius: 8px;
-  border: 1px solid;
-}
-
-.stage-1 {
-  background-color: #fefce8;
-  border-color: #eab308;
-}
-
-.stage-2 {
-  background-color: #fef2f2;
-  border-color: #ef4444;
-}
-
-.stage-header {
-  font-size: 1rem;
-  font-weight: 600;
-  margin-bottom: 1rem;
-  color: #1e293b;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-}
-
-.stage-item {
-  margin-bottom: 1rem;
-}
-
-.stage-item:last-child {
-  margin-bottom: 0;
-}
-
-.item-label {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #374151;
-  margin-bottom: 0.25rem;
-}
-
-.item-value {
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas, monospace;
-  font-size: 0.8125rem;
-  color: #1e293b;
-  background: rgba(255, 255, 255, 0.7);
-  padding: 0.5rem;
-  border-radius: 4px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-}
-
-.formula {
-  font-weight: 500;
+:deep(.header-close-btn:active) {
+  background: rgba(239, 68, 68, 0.2);
 }
 </style>
