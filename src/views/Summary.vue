@@ -1,10 +1,14 @@
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, computed, reactive, inject, ref, watch } from 'vue'
-import { AgGridVue } from 'ag-grid-vue3'
-import { AllCommunityModule } from 'ag-grid-community'
-import type { ColDef, GridApi, ColumnApi } from 'ag-grid-community'
-import 'ag-grid-community/styles/ag-grid.css'
-import 'ag-grid-community/styles/ag-theme-alpine.css'
+// 1. REPLACE AG Grid imports with Tabulator
+import { TabulatorFull as Tabulator } from 'tabulator-tables'
+// REMOVE these AG Grid imports:
+// import { AgGridVue } from 'ag-grid-vue3'
+// import { AllCommunityModule } from 'ag-grid-community'
+// import type { ColDef, GridApi, ColumnApi } from 'ag-grid-community'
+// import 'ag-grid-community/styles/ag-grid.css'
+// import 'ag-grid-community/styles/ag-theme-alpine.css'
+
+import { onMounted, onBeforeUnmount, computed, reactive, inject, ref, watch, nextTick } from 'vue'
 import { useNlvMarginQuery, type nlvMargin } from '@y2kfund/core/nlvMargin'
 import { useQuery, useQueryClient } from '@tanstack/vue-query'
 import { useSupabase } from '@y2kfund/core'
@@ -41,9 +45,13 @@ const emit = defineEmits<{
   'minimize': []
 }>()
 
-// Grid refs
-const gridApi = ref<GridApi | null>(null)
-const columnApiRef = ref<ColumnApi | null>(null)
+// 2. REPLACE grid refs
+const tableDiv = ref<HTMLDivElement | null>(null)
+let tabulator: Tabulator | null = null
+
+// REMOVE these:
+// const gridApi = ref<GridApi | null>(null)
+// const columnApiRef = ref<ColumnApi | null>(null)
 
 const q = useNlvMarginQuery(10, props.userId)
 
@@ -98,7 +106,8 @@ function getUrlParams() {
 }
 
 // Function to extract client number from URL parameter
-function extractClientNumber(clientParam: string | null): number | null {
+function extractClientNumber(clientParam: string | null): number | null
+{
   if (!clientParam) return null
   const match = clientParam.match(/Client\s*(\d+)/i)
   return match ? parseInt(match[1]) : null
@@ -417,292 +426,439 @@ function handleSummaryClickOutside(event: Event) {
   }
 }
 
-function setSummaryColumnVisibility(field: string, visible: boolean) {
-  const api = gridApi.value
-  if (!api) return
-  
-  try {
-    if (typeof api.setColumnsVisible === 'function') {
-      api.setColumnsVisible([field], visible)
-    } else if (typeof api.setColumnVisible === 'function') {
-      api.setColumnVisible(field, visible)
-    }
-  } catch (error) {
-    console.warn('Could not set column visibility:', error)
-  }
-}
-
 // Watch for column visibility changes and update grid
 watch(summaryVisibleCols, (cols) => {
   writeSummaryVisibleColsToUrl(cols)
+  
+  if (!tabulator) return
+  
   for (const opt of allSummaryColumnOptions) {
     setSummaryColumnVisibility(opt.field, isSummaryColVisible(opt.field))
   }
 }, { deep: true })
 
-// Update column definitions to respect visibility
-const columnDefs = computed<ColDef[]>(() => [
-  {
-    headerName: 'Account',
-    field: 'account',
-    valueGetter: (params) => {
-      if (params.data.isTotal) return 'All Accounts';
-      // Use legal_entity if available, otherwise fall back to Client# format
-      if (params.data.legal_entity) {
-        return params.data.legal_entity;
-      }
-      const accountId = typeof params.data.nlv_internal_account_id === 'string' 
-        ? parseInt(params.data.nlv_internal_account_id) 
-        : params.data.nlv_internal_account_id;
-      const index = calculatedMetrics.value?.findIndex(m => {
-        const mAccountId = typeof m.nlv_internal_account_id === 'string' 
-          ? parseInt(m.nlv_internal_account_id) 
-          : m.nlv_internal_account_id;
-        return mAccountId === accountId;
-      }) ?? -1;
-      return `Client${index + 1}`;
-    },
-    pinned: 'left',
-    width: 95,
-    hide: !isSummaryColVisible('account'),
-    onCellClicked: (event: any) => {
-      // Don't allow filtering on total rows
-      if (event.data?.isTotal) return
-      handleSummaryAccountCellFilterClick(event?.value)
-    },
-    cellRenderer: (params) => {
-      if (params.data.isTotal) {
-        return `<div class="account-cell total-row">
-          <span class="account-name">${params.value}</span>
-        </div>`;
-      }
-      
-      const status = params.data.addlGmvAllowedNlvSide < 0 && params.data.addlGmvAllowedMaintenanceSide < 0 
-        ? 'STAGE 2 EXHAUSTED' 
-        : (params.data.addlGmvAllowedNlvSide < 0 ? 'STAGE 1 EXHAUSTED' : 'OK');
-      const statusClass = status === 'STAGE 2 EXHAUSTED' ? 'status-stage2' : 
-                         status === 'STAGE 1 EXHAUSTED' ? 'status-stage1' : 'status-ok';
-      return `<div class="account-cell clickable-account">
-        <span class="account-name">${params.value}</span>
-        <span class="status-badge ${statusClass}">${status}</span>
-      </div>`;
-    }
-  },
-  {
-    headerName: 'NLV',
-    field: 'nlv_val',
-    valueFormatter: (params) => formatCurrency(params.value),
-    cellClass: 'number-cell',
-    headerClass: 'graph-header',
-    flex: 1,
-    hide: !isSummaryColVisible('nlv_val'),
-    cellRenderer: (params) => {
-      if (params.data.isTotal) {
-        return `<span class="cell-value total-cell">${formatCurrency(params.value)}</span>`;
-      }
-      const accountId = typeof params.data.nlv_internal_account_id === 'string' 
-        ? parseInt(params.data.nlv_internal_account_id) 
-        : params.data.nlv_internal_account_id;
-      const isActive = graphVisibility[accountId]?.nlv;
-      return `<div class="cell-with-graph">
-        <span class="cell-value">${formatCurrency(params.value)}</span>
-      </div>`;
-    }
-  },
-  {
-    headerName: 'Maintenance Margin',
-    field: 'maintenance_val',
-    valueFormatter: (params) => {
-      // Convert string to number for formatting
-      const value = typeof params.value === 'string' ? parseFloat(params.value) : params.value;
-      return formatCurrency(value);
-    },
-    cellClass: 'number-cell',
-    headerClass: 'graph-header',
-    flex: 1,
-    hide: !isSummaryColVisible('maintenance_val'),
-    cellRenderer: (params) => {
-      if (params.data.isTotal) {
-        return `<span class="cell-value total-cell">${formatCurrency(params.value)}</span>`;
-      }
-      const accountId = typeof params.data.nlv_internal_account_id === 'string' 
-        ? parseInt(params.data.nlv_internal_account_id) 
-        : params.data.nlv_internal_account_id;
-      const isActive = graphVisibility[accountId]?.mm;
-      
-      // Convert string to number for display
-      const value = typeof params.value === 'string' ? parseFloat(params.value) : params.value;
-      
-      return `<div class="cell-with-graph">
-        <span class="cell-value">${formatCurrency(value)}</span>
-      </div>`;
-    }
-  },
-  {
-    headerName: 'Excess Maintenance Margin',
-    field: 'excess_maintenance_margin',
-    valueFormatter: (params) => formatCurrency(params.value),
-    cellClass: (params) => {
-      const baseClass = 'number-cell';
-      if (params.data.isTotal) return `${baseClass} total-cell`;
-      return params.value < 0 ? `${baseClass} negative` : baseClass;
-    },
-    flex: 1,
-    hide: !isSummaryColVisible('excess_maintenance_margin')
-  },
-  {
-    headerName: "Stop-adding threshold (Add'l GMV)",
-    field: 'addlGmvAllowedNlvSide',
-    valueFormatter: (params) => formatCurrency(params.value),
-    cellClass: (params) => {
-      const baseClass = 'number-cell';
-      if (params.data.isTotal) return `${baseClass} total-cell`;
-      return params.value < 0 ? `${baseClass} negative` : baseClass;
-    },
-    flex: 1,
-    hide: !isSummaryColVisible('addlGmvAllowedNlvSide')
-  },
-  {
-    headerName: "Start-reducing threshold (Add'l GMV)",
-    field: 'addlGmvAllowedMaintenanceSide',
-    valueFormatter: (params) => formatCurrency(params.value),
-    cellClass: (params) => {
-      const baseClass = 'number-cell';
-      if (params.data.isTotal) return `${baseClass} total-cell`;
-      return params.value < 0 ? `${baseClass} negative` : baseClass;
-    },
-    flex: 1,
-    hide: !isSummaryColVisible('addlGmvAllowedMaintenanceSide')
-  },
-]);
+// 3. ADD Tabulator initialization function (REPLACE onGridReady)
+function initializeTabulator() {
+  if (!tableDiv.value) return
 
-// Grid ready handler
-function onGridReady(event: any) {
-  gridApi.value = event.api;
-  columnApiRef.value = event.columnApi;
-  
-  // Apply initial filters from URL ONLY ONCE
-  const initialFilters = parseFiltersFromUrl()
-  if (initialFilters.account) {
-    const filterModel = {
-      account: { type: 'equals', filter: initialFilters.account }
-    }
-    event.api.setFilterModel(filterModel)
+  if (tabulator) {
+    try { tabulator.destroy() } catch (error) {}
+    tabulator = null
   }
-  
-  // Add click event listeners for buttons using the grid container element
-  const gridElement = document.querySelector('.summary-ag-grid .ag-root-wrapper');
-  if (gridElement) {
-    gridElement.addEventListener('click', (event: Event) => {
-      const target = event.target as HTMLElement;
-      
-      // Hide context menu on any click
-      hideContextMenu()
-      
-      if (target.classList.contains('graph-btn')) {
-        const accountId = parseInt(target.getAttribute('data-account') || '0');
-        const type = target.getAttribute('data-type') as 'nlv' | 'mm';
-        toggleGraph(accountId, type);
-        // Refresh the grid to update button states
-        if (gridApi.value && typeof gridApi.value.refreshCells === 'function') {
-          gridApi.value.refreshCells();
+
+  const columns = [
+    {
+      title: 'Account',
+      field: 'account',
+      //width: 120,
+      frozen: true,
+      formatter: (cell: any) => {
+        const data = cell.getRow().getData()
+        if (data.isTotal) {
+          return `<div class="account-cell total-row">
+            <span class="account-name">All Accounts</span>
+          </div>`
+        }
+        const status = data.addlGmvAllowedNlvSide < 0 && data.addlGmvAllowedMaintenanceSide < 0 
+          ? 'STAGE 2 EXHAUSTED' 
+          : (data.addlGmvAllowedNlvSide < 0 ? 'STAGE 1 EXHAUSTED' : 'OK')
+        const statusClass = status === 'STAGE 2 EXHAUSTED' ? 'status-stage2' : 
+                           status === 'STAGE 1 EXHAUSTED' ? 'status-stage1' : 'status-ok'
+        return `<div class="account-cell clickable-account">
+          <span class="account-name">${data.legal_entity || data.account}</span>
+          <span class="status-badge ${statusClass}">${status}</span>
+        </div>`
+      },
+      cellClick: (e: any, cell: any) => {
+        const data = cell.getRow().getData()
+        if (!data.isTotal) {
+          handleSummaryAccountCellFilterClick(data.account)
         }
       }
-    });
+    },
+    {
+      title: 'NLV',
+      field: 'nlv_val',
+      hozAlign: 'right',
+      formatter: (cell: any) => {
+        const data = cell.getRow().getData()
+        const value = formatCurrency(cell.getValue())
+        if (data.isTotal) {
+          return `<span class="cell-value total-cell">${value}</span>`
+        }
+        return `<div class="cell-with-graph">
+          <span class="cell-value">${value}</span>
+        </div>`
+      },
+      bottomCalc: 'sum',
+      bottomCalcFormatter: (cell: any) => formatCurrency(cell.getValue())
+    },
+    {
+      title: 'Maintenance Margin',
+      field: 'maintenance_val',
+      hozAlign: 'right',
+      formatter: (cell: any) => {
+        const data = cell.getRow().getData()
+        const value = typeof cell.getValue() === 'string' ? parseFloat(cell.getValue()) : cell.getValue()
+        const formatted = formatCurrency(value)
+        if (data.isTotal) {
+          return `<span class="cell-value total-cell">${formatted}</span>`
+        }
+        return `<div class="cell-with-graph">
+          <span class="cell-value">${formatted}</span>
+        </div>`
+      },
+      bottomCalc: 'sum',
+      bottomCalcFormatter: (cell: any) => {
+        const value = typeof cell.getValue() === 'string' ? parseFloat(cell.getValue()) : cell.getValue()
+        return formatCurrency(value)
+      }
+    },
+    {
+      title: 'Excess Maintenance Margin',
+      field: 'excess_maintenance_margin',
+      hozAlign: 'right',
+      formatter: (cell: any) => {
+        const value = cell.getValue()
+        const formatted = formatCurrency(value)
+        const isNegative = value < 0
+        return `<span class="${isNegative ? 'negative' : ''}">${formatted}</span>`
+      },
+      bottomCalc: 'sum',
+      bottomCalcFormatter: (cell: any) => formatCurrency(cell.getValue())
+    },
+    {
+      title: "Stop-adding threshold (Add'l GMV)",
+      field: 'addlGmvAllowedNlvSide',
+      hozAlign: 'right',
+      formatter: (cell: any) => {
+        const value = cell.getValue()
+        const formatted = formatCurrency(value)
+        const isNegative = value < 0
+        return `<span class="${isNegative ? 'negative' : ''}">${formatted}</span>`
+      },
+      bottomCalc: 'sum',
+      bottomCalcFormatter: (cell: any) => formatCurrency(cell.getValue())
+    },
+    {
+      title: "Start-reducing threshold (Add'l GMV)",
+      field: 'addlGmvAllowedMaintenanceSide',
+      hozAlign: 'right',
+      formatter: (cell: any) => {
+        const value = cell.getValue()
+        const formatted = formatCurrency(value)
+        const isNegative = value < 0
+        return `<span class="${isNegative ? 'negative' : ''}">${formatted}</span>`
+      },
+      bottomCalc: 'sum',
+      bottomCalcFormatter: (cell: any) => formatCurrency(cell.getValue())
+    }
+  ].filter(col => summaryVisibleCols.value.includes(col.field as SummaryColumnField))
 
-    // Update right-click event listener to detect column
-    gridElement.addEventListener('contextmenu', (event: Event) => {
-      const target = event.target as HTMLElement;
-      const cell = target.closest('.ag-cell');
-      const row = target.closest('.ag-row');
-      
-      if (row && cell) {
-        const rowIndex = row.getAttribute('row-index');
-        const colId = cell.getAttribute('col-id');
-        
-        if (rowIndex !== null) {
-          const rowNode = gridApi.value?.getDisplayedRowAtIndex(parseInt(rowIndex));
-          if (rowNode?.data && !rowNode.data.isTotal) {
-            const accountId = typeof rowNode.data.nlv_internal_account_id === 'string' 
-              ? parseInt(rowNode.data.nlv_internal_account_id) 
-              : rowNode.data.nlv_internal_account_id;
-            if (accountId) {
-              showContextMenu(event as MouseEvent, accountId, colId || undefined);
-            }
-          }
+  try {
+    tabulator = new Tabulator(tableDiv.value, {
+      data: gridRowData.value,
+      columns,
+      layout: 'fitColumns',
+      height: 'auto', // CHANGED: from '400px' to 'auto' for content-based height
+      placeholder: 'No data available',
+      columnDefaults: {
+        resizable: true,
+        headerSort: true
+      },
+      rowFormatter: (row: any) => {
+        const data = row.getData()
+        const element = row.getElement()
+        if (data.isTotal && element) {
+          element.style.backgroundColor = '#f8f9fa'
+          element.style.fontWeight = 'bold'
         }
       }
-    });
+    })
+
+    tabulator.on('cellContext', (e: any, cell: any) => {
+      e.preventDefault()
+      const data = cell.getRow().getData()
+      if (!data.isTotal) {
+        showContextMenu(e, 
+          typeof data.nlv_internal_account_id === 'string' 
+            ? parseInt(data.nlv_internal_account_id) 
+            : data.nlv_internal_account_id,
+          cell.getField()
+        )
+      }
+    })
+
+    syncActiveSummaryFiltersFromGrid()
+  } catch (error) {
+    console.error('Error creating Tabulator:', error)
   }
-  
-  // Sync filters AFTER initial setup
-  syncActiveSummaryFiltersFromGrid()
 }
 
-// Grid row data with totals
+// 4. UPDATE gridRowData to include account field
 const gridRowData = computed(() => {
-  if (!calculatedMetrics.value) return [];
+  if (!calculatedMetrics.value) return []
   
-  // Just return the filtered metrics without adding totals to the main data
-  return filteredMetrics.value;
-});
+  const rows = filteredMetrics.value.map(item => ({
+    ...item,
+    account: item.legal_entity,
+    isTotal: false
+  }))
 
-// Separate regular data from totals
-const regularRowData = computed(() => {
-  return filteredMetrics.value || [];
-});
-
-// Update the pinnedBottomRowData computed property to hide totals when filters are active
-const pinnedBottomRowData = computed(() => {
-  // Only show totals row when showing all accounts AND no filters are active
-  if (!selectedClientFromUrl.value && allAccountsSummary.value && activeSummaryFilters.value.length === 0) {
-    return [{
-      nlv_internal_account_id: -1,
+  /*if (!selectedClientFromUrl.value && allAccountsSummary.value && activeSummaryFilters.value.length === 0) {
+    rows.push({
+      account: 'All Accounts',
       nlv_val: allAccountsSummary.value.totalNlv,
       maintenance_val: allAccountsSummary.value.totalMaintenance,
       excess_maintenance_margin: allAccountsSummary.value.totalExcessMaintenance,
       addlGmvAllowedNlvSide: allAccountsSummary.value.totalAddlGmvToStopReducing,
       addlGmvAllowedMaintenanceSide: allAccountsSummary.value.totalAddlGmvToStartReducing,
       isTotal: true
-    }];
-  }
-  return [];
-});
+    } as any)
+  }*/
 
-// Add function to determine if row should be pinned
-function isRowPinned(params: any) {
-  return params.data?.isTotal ? 'bottom' : null;
+  return rows
+})
+
+// 5. UPDATE filter sync function
+function syncActiveSummaryFiltersFromGrid() {
+  const next: ActiveSummaryFilter[] = []
+  
+  if (tabulator) {
+    const filters = tabulator.getFilters()
+    for (const filter of filters) {
+      if (filter.field === 'account' && filter.value) {
+        next.push({ field: 'account', value: String(filter.value) })
+      }
+    }
+  }
+  
+  activeSummaryFilters.value = next
 }
 
-// Add context menu state after your existing reactive variables
+// 6. UPDATE handleSummaryAccountCellFilterClick
+function handleSummaryAccountCellFilterClick(value: any) {
+  if (!tabulator || value === undefined || value === null) return
+  
+  // Clear existing filters first
+  tabulator.clearFilter()
+  
+  // Set new filter with correct syntax
+  tabulator.setFilter([
+    { field: 'account', type: '=', value: String(value) }
+  ])
+  
+  syncActiveSummaryFiltersFromGrid()
+  
+  const url = new URL(window.location.href)
+  url.searchParams.set('all_cts_clientId', String(value))
+  window.history.replaceState({}, '', url.toString())
+  
+  if (eventBus) {
+    eventBus.emit('account-filter-changed', {
+      accountId: String(value),
+      source: 'summary'
+    })
+  }
+}
+
+// 7. UPDATE clearSummaryFilter
+function clearSummaryFilter(field: 'account') {
+  if (!tabulator) return
+  
+  const hadFilter = tabulator.getFilters().some(f => f.field === field)
+  
+  // Clear all filters
+  tabulator.clearFilter()
+  
+  syncActiveSummaryFiltersFromGrid()
+  
+  // Clear the URL parameter
+  const url = new URL(window.location.href)
+  url.searchParams.delete('all_cts_clientId')
+  window.history.replaceState({}, '', url.toString())
+  
+  // Clear the local state
+  selectedClientFromUrl.value = null
+  
+  // Emit event to notify other components
+  if (hadFilter && eventBus) {
+    eventBus.emit('account-filter-changed', {
+      accountId: null,
+      source: 'summary'
+    })
+  }
+  
+  // Refresh the table data to show all accounts
+  nextTick(() => {
+    if (tabulator) {
+      tabulator.replaceData(gridRowData.value)
+    }
+  })
+}
+
+// 8. UPDATE clearAllSummaryFilters
+function clearAllSummaryFilters() {
+  if (!tabulator) return
+  
+  const hadAccountFilter = tabulator.getFilters().some(f => f.field === 'account')
+  
+  tabulator.clearFilter()
+  syncActiveSummaryFiltersFromGrid()
+  
+  const url = new URL(window.location.href)
+  url.searchParams.delete('all_cts_clientId')
+  window.history.replaceState({}, '', url.toString())
+  
+  if (hadAccountFilter && eventBus) {
+    eventBus.emit('account-filter-changed', {
+      accountId: null,
+      source: 'summary'
+    })
+  }
+}
+
+// 9. UPDATE handleExternalAccountFilter
+function handleExternalAccountFilter(payload: { accountId: string | null, source: string }) {
+  if (payload.source === 'summary' || !tabulator) return
+  
+  if (payload.accountId) {
+    tabulator.setFilter([
+      { field: 'account', type: '=', value: payload.accountId }
+    ])
+  } else {
+    tabulator.clearFilter()
+  }
+  
+  syncActiveSummaryFiltersFromGrid()
+}
+
+// 10. UPDATE setSummaryColumnVisibility
+function setSummaryColumnVisibility(field: string, visible: boolean) {
+  if (!tabulator) return
+  
+  try {
+    if (visible) {
+      tabulator.showColumn(field)
+    } else {
+      tabulator.hideColumn(field)
+    }
+  } catch (error) {
+    console.warn('Could not set column visibility:', error)
+  }
+}
+
+// 11. ADD watchers for data and column changes
+watch([() => q.data.value, selectedClientFromUrl], () => {
+  if (!tabulator) return
+  
+  nextTick(() => {
+    tabulator.replaceData(gridRowData.value)
+  })
+})
+
+watch(summaryVisibleCols, (cols) => {
+  writeSummaryVisibleColsToUrl(cols)
+  
+  if (!tabulator) return
+  
+  for (const opt of allSummaryColumnOptions) {
+    setSummaryColumnVisibility(opt.field, isSummaryColVisible(opt.field))
+  }
+}, { deep: true })
+
+// 12. UPDATE onMounted
+onMounted(() => {
+  selectedClientFromUrl.value = getUrlParams()
+  
+  window.addEventListener('popstate', () => {
+    selectedClientFromUrl.value = getUrlParams()
+  })
+
+  document.addEventListener('click', hideContextMenu)
+  document.addEventListener('click', handleSummaryClickOutside)
+  
+  scheduleContainerPolling()
+  
+  if (eventBus) {
+    eventBus.on('account-filter-changed', handleExternalAccountFilter)
+  }
+
+  // Initialize Tabulator after DOM is ready
+  nextTick(() => {
+    if (q.isSuccess.value) {
+      initializeTabulator()
+    }
+  })
+})
+
+// 13. ADD watch for query success
+watch(() => q.isSuccess.value, (isSuccess) => {
+  if (isSuccess) {
+    nextTick(() => {
+      initializeTabulator()
+    })
+  }
+})
+
+// 14. UPDATE onBeforeUnmount
+onBeforeUnmount(() => {
+  if (tabulator) {
+    try { tabulator.destroy() } catch (error) {}
+    tabulator = null
+  }
+  
+  document.removeEventListener('click', hideContextMenu)
+  document.removeEventListener('click', handleSummaryClickOutside)
+  
+  pollTimers.forEach(t => clearInterval(t))
+  pollTimers.length = 0
+  
+  if (eventBus) {
+    eventBus.off('account-filter-changed', handleExternalAccountFilter)
+  }
+})
+
+// REMOVE these AG Grid specific functions:
+// - onGridReady
+// - columnDefs computed
+// - regularRowData computed
+// - pinnedBottomRowData computed
+// - isRowPinned function
+// - Any watch on gridApi.value
+
+// 15. REPLACE AG Grid with Tabulator div
+
+// Context menu state
 const contextMenu = ref({
   visible: false,
   x: 0,
   y: 0,
   accountId: null as number | null,
-  columnId: null as string | null, // Add column tracking
-  fetchedAt: null as string | null // Add fetched_at tracking
+  columnId: null as string | null,
+  fetchedAt: null as string | null
 })
 
-// Add these missing context menu functions
-function showContextMenu(event: MouseEvent, accountId: number, columnId?: string) {
-  event.preventDefault()
-  
-  // Find the row data to get fetched_at_val
-  const rowData = calculatedMetrics.value?.find(m => {
+// Active filters for Summary
+type ActiveSummaryFilter = { field: 'account'; value: string }
+const activeSummaryFilters = ref<ActiveSummaryFilter[]>([])
+
+// Context menu functions
+function showContextMenu(e: MouseEvent, accountId: number, columnId: string) {
+  const item = calculatedMetrics.value?.find(m => {
     const mAccountId = typeof m.nlv_internal_account_id === 'string' 
       ? parseInt(m.nlv_internal_account_id) 
-      : m.nlv_internal_account_id;
-    return mAccountId === accountId;
-  });
+      : m.nlv_internal_account_id
+    return mAccountId === accountId
+  })
   
   contextMenu.value = {
     visible: true,
-    x: event.clientX,
-    y: event.clientY,
+    x: e.clientX,
+    y: e.clientY,
     accountId,
-    columnId: columnId || null,
-    fetchedAt: rowData?.fetched_at_val || null
+    columnId,
+    fetchedAt: item?.fetched_at_val || null
   }
 }
 
@@ -710,91 +866,167 @@ function hideContextMenu() {
   contextMenu.value.visible = false
 }
 
-function handleDetails() {
-  if (contextMenu.value.accountId) {
-    const accountId = contextMenu.value.accountId
-    console.log('🔧 Details clicked for account:', accountId)
-    
-    // Find the item by nlv_internal_account_id (comparing as numbers)
-    const item = calculatedMetrics.value?.find(m => {
-      const mAccountId = typeof m.nlv_internal_account_id === 'string' 
-        ? parseInt(m.nlv_internal_account_id) 
-        : m.nlv_internal_account_id;
-      return mAccountId === accountId;
-    });
-    
-    console.log('📋 Found item for breakdown:', item);
-    
-    if (item) {
-      console.log('🎯 Toggling breakdown for account ID:', accountId);
-      toggleBreakdown(accountId);
-    } else {
-      console.warn('⚠️ No item found for account ID:', accountId);
-    }
+// Context menu items computed property
+const contextMenuItems = computed(() => {
+  if (!contextMenu.value.accountId) return []
+  
+  const items = []
+  
+  // Always show "Details" option
+  items.push({
+    icon: '📋',
+    label: 'Details',
+    action: 'details',
+    active: breakdownVisibility[contextMenu.value.accountId] || false
+  })
+  
+  // Show graph options for NLV and Maintenance columns
+  const colId = contextMenu.value.columnId
+  if (colId === 'nlv_val') {
+    items.push({
+      icon: '📊',
+      label: 'NLV Graph',
+      action: 'nlv_graph',
+      active: isGraphActive(contextMenu.value.accountId, 'nlv')
+    })
+  } else if (colId === 'maintenance_val') {
+    items.push({
+      icon: '📈',
+      label: 'Maintenance Graph',
+      action: 'mm_graph',
+      active: isGraphActive(contextMenu.value.accountId, 'mm')
+    })
   }
-  hideContextMenu()
-}
+  
+  return items
+})
 
-// Add new context menu handlers for graphs
-function handleNlvGraph() {
-  if (contextMenu.value.accountId) {
-    const accountId = contextMenu.value.accountId
-    console.log('📊 NLV Graph clicked for account:', accountId)
-    toggleGraph(accountId, 'nlv')
-    
-    // Refresh the grid to update button states
-    if (gridApi.value && typeof gridApi.value.refreshCells === 'function') {
-      gridApi.value.refreshCells();
-    }
-  }
-  hideContextMenu()
-}
-
-function handleMaintenanceGraph() {
-  if (contextMenu.value.accountId) {
-    const accountId = contextMenu.value.accountId
-    console.log('📊 Maintenance Margin Graph clicked for account:', accountId)
-    toggleGraph(accountId, 'mm')
-    
-    // Refresh the grid to update button states
-    if (gridApi.value && typeof gridApi.value.refreshCells === 'function') {
-      gridApi.value.refreshCells();
-    }
-  }
-  hideContextMenu()
-}
-
-// Helper function to check if a graph is active
+// Helper to check if a graph is active
 function isGraphActive(accountId: number, type: 'nlv' | 'mm'): boolean {
-  return graphVisibility[accountId]?.[type] || false
+  return selectedAccountForHistory.value === accountId && selectedGraphType.value === type
 }
 
-// Notification functions
-function showNotification(type: 'success' | 'error', message: string) {
-  const notification: Notification = {
-    id: ++notificationIdCounter,
-    type,
-    message
+// Handle context menu actions
+function handleContextMenuAction(action: string) {
+  const accountId = contextMenu.value.accountId
+  if (!accountId) return
+  
+  switch (action) {
+    case 'details':
+      toggleBreakdown(accountId)
+      break
+    case 'nlv_graph':
+      toggleGraph(accountId, 'nlv')
+      break
+    case 'mm_graph':
+      toggleGraph(accountId, 'mm')
+      break
   }
   
-  notifications.value.push(notification)
-  
-  // Auto-remove after 4 seconds
-  setTimeout(() => {
-    removeNotification(notification.id)
-  }, 4000)
+  hideContextMenu()
 }
 
-function removeNotification(id: number) {
-  const index = notifications.value.findIndex(n => n.id === id)
-  if (index > -1) {
-    notifications.value.splice(index, 1)
+// Toggle graph visibility
+function toggleGraph(accountId: number, type: 'nlv' | 'mm') {
+  // If clicking the same graph that's already open, close it
+  if (selectedAccountForHistory.value === accountId && selectedGraphType.value === type) {
+    selectedAccountForHistory.value = null
+    selectedGraphType.value = null
+  } else {
+    // Otherwise, open the new graph
+    selectedAccountForHistory.value = accountId
+    selectedGraphType.value = type
   }
 }
 
-// Map account ID to container name
-function getContainerNameFromAccountId(accountId: number): string | null {
-  const mapping: Record<number, string> = {
+// Current history query computed property
+const currentHistoryQuery = computed(() => {
+  if (!selectedGraphType.value) return null
+  return selectedGraphType.value === 'nlv' ? nlvHistoryQuery : maintenanceHistoryQuery
+})
+
+// Chart data for Chart.js
+const chartData = computed(() => {
+  const query = currentHistoryQuery.value
+  if (!query?.data.value?.length) return null
+  
+  const data = query.data.value
+  const isNlv = selectedGraphType.value === 'nlv'
+  
+  return {
+    labels: data.map((item: any) => {
+      const date = new Date(item.fetched_at)
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    }),
+    datasets: [
+      {
+        label: isNlv ? 'NLV' : 'Maintenance Margin',
+        data: data.map((item: any) => isNlv ? item.nlv : item.maintenance),
+        borderColor: isNlv ? '#3b82f6' : '#10b981',
+        backgroundColor: isNlv ? 'rgba(59, 130, 246, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+        tension: 0.4,
+        fill: true
+      }
+    ]
+  }
+})
+
+// Chart options
+const chartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: {
+      display: true,
+      position: 'top' as const
+    },
+    tooltip: {
+      mode: 'index' as const,
+      intersect: false,
+      callbacks: {
+        label: function(context: any) {
+          return `${context.dataset.label}: ${formatCurrency(context.parsed.y)}`
+        }
+      }
+    }
+  },
+  scales: {
+    y: {
+      beginAtZero: false,
+      ticks: {
+        callback: function(value: any) {
+          return formatCurrency(value)
+        }
+      }
+    }
+  }
+}
+
+// Format timestamp to PST
+function formatToPST(timestamp: string | null): string {
+  if (!timestamp) return 'N/A'
+  
+  try {
+    const date = new Date(timestamp)
+    return date.toLocaleString('en-US', {
+      timeZone: 'America/Los_Angeles',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    })
+  } catch (error) {
+    return 'Invalid date'
+  }
+}
+
+// Docker container management functions
+const pollTimers: number[] = []
+
+function getContainerNameFromAccountId(clientNumber: number): string {
+  const containerMap: { [key: number]: string } = {
     1: 'bansi',
     2: 'cis',
     3: 'hediye',
@@ -803,645 +1035,116 @@ function getContainerNameFromAccountId(accountId: number): string | null {
     6: 'stamp',
     7: 'vk'
   }
-  return mapping[accountId] || null
+  return containerMap[clientNumber] || ''
 }
 
-// Docker container control - Start Container
-async function startDockerContainer(containerName: string) {
-  const currentState = containerStates[containerName]
-  if (!currentState) {
-    console.error(`Container state not found for: ${containerName}`)
-    return
-  }
-
-  // Prevent multiple simultaneous requests
-  if (currentState.isLoading) return
-
-  const url = `${DOCKER_CONTROL_URL}?action=start&container_name=${containerName}`
-
-  // Set loading state
-  currentState.isLoading = true
-  currentState.isStarting = true
-
-  try {
-    console.log(`Starting container: ${containerName}`)
-    
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    })
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
-
-    const data = await response.json()
-    console.log('Docker Start API Response:', data)
-
-    if (data.status === 'success') {
-      currentState.lastUpdated = new Date()
-      console.log(`Container ${containerName} started successfully`)
-      
-      // Show success notification
-      showNotification('success', `Container "${containerName}" started successfully!`)
-      
-      // Optional: Show the output for debugging
-      if (data.output) {
-        console.log('Start command output:', data.output)
-      }
-    } else {
-      throw new Error(data.message || `Failed to start container`)
-    }
-  } catch (error) {
-    console.error(`Error starting Docker container:`, error)
-    showNotification('error', `Failed to start container "${containerName}". Check console for details.`)
-  } finally {
-    // Clear loading state
-    currentState.isLoading = false
-    currentState.isStarting = false
-  }
-}
-
-// Docker container control - Stop Container
-async function stopDockerContainer(containerName: string) {
-  const currentState = containerStates[containerName]
-  if (!currentState) {
-    console.error(`Container state not found for: ${containerName}`)
-    return
-  }
-
-  // Prevent multiple simultaneous requests
-  if (currentState.isLoading) return
-
-  const url = `${DOCKER_CONTROL_URL}?action=stop&container_name=${containerName}`
-
-  // Set loading state
-  currentState.isLoading = true
-  currentState.isStopping = true
-  
-  try {
-    console.log(`Stopping container: ${containerName}`)
-    
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    })
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
-
-    const data = await response.json()
-    console.log('Docker Stop API Response:', data)
-
-    if (data.status === 'success') {
-      currentState.lastUpdated = new Date()
-      console.log(`Container ${containerName} stopped successfully`)
-      
-      // Show success notification
-      showNotification('success', `Container "${containerName}" stopped successfully!`)
-      
-      // Optional: Show the output for debugging
-      if (data.output) {
-        console.log('Stop command output:', data.output)
-      }
-    } else {
-      throw new Error(data.message || `Failed to stop container`)
-    }
-  } catch (error) {
-    console.error(`Error stopping Docker container:`, error)
-    showNotification('error', `Failed to stop container "${containerName}". Check console for details.`)
-  } finally {
-    // Clear loading state
-    currentState.isLoading = false
-    currentState.isStopping = false
-  }
-}
-
-// Container polling functionality
-const POLL_INTERVAL = 10_000  // 10 seconds
-const POLL_TIMEOUT = 8000     // 8 seconds timeout
-const pollTimers: number[] = []
-
-// Helper function to get container state
-function getContainerState(accountId: number): ContainerState {
-  const containerName = getContainerNameFromAccountId(accountId)
-  if (!containerName) {
-    return { isLoading: false, isStarting: false, isStopping: false, online: false }
-  }
-  return containerStates[containerName] || { isLoading: false, isStarting: false, isStopping: false, online: false }
-}
-
-// Check container status by polling its API endpoint
-async function checkContainer(accountId: number) {
-  const containerName = getContainerNameFromAccountId(accountId)
-  if (!containerName) return
-  
+function getContainerDisplay(clientNumber: number): { online: boolean; lastUpdated?: Date | null } {
+  const containerName = getContainerNameFromAccountId(clientNumber)
   const state = containerStates[containerName]
-  if (!state || state.isLoading) return
+  return {
+    online: state?.online || false,
+    lastUpdated: state?.lastUpdated || null
+  }
+}
+
+async function checkContainerStatus(containerName: string) {
+  const state = containerStates[containerName]
+  if (!state) return
   
   state.isLoading = true
-  state.lastError = null
-
-  // Build the URL based on container name
-  const url = containerName === 'vk' 
-    ? `https://ibkr.vk.to5001.aiworkspace.pro/api/maintenance`
-    : `https://ibkr.${containerName}.to5001.aiworkspace.pro/api/maintenance`
   
-  const ac = new AbortController()
-  const timeoutId = setTimeout(() => ac.abort(), POLL_TIMEOUT)
-
   try {
-    const res = await fetch(url, { signal: ac.signal })
-    if (!res.ok) {
-      state.online = false
-      state.lastError = `HTTP ${res.status}`
+    const response = await fetch(`${DOCKER_CONTROL_URL}?action=status&container=${containerName}`)
+    const data = await response.json()
+    
+    if (data.success) {
+      state.online = data.status === 'running'
+      state.lastUpdated = new Date()
+      state.lastError = null
     } else {
-      const data = await res.json().catch(() => null)
-      if (data && data.account_id) {
-        state.online = true
-        state.lastUpdated = data.timestamp ? new Date(data.timestamp) : new Date()
-        state.lastError = null
-      } else {
-        state.online = false
-        state.lastError = 'missing account_id'
-      }
+      state.lastError = data.error || 'Unknown error'
     }
-  } catch (err: any) {
-    state.online = false
-    state.lastError = String(err?.message || err)
+  } catch (error) {
+    console.error(`Error checking ${containerName} status:`, error)
+    state.lastError = String(error)
   } finally {
-    clearTimeout(timeoutId)
     state.isLoading = false
   }
 }
 
-// Schedule polling for all containers
-function scheduleContainerPolling() {
-  // Clear existing timers
-  pollTimers.forEach(t => clearInterval(t))
-  pollTimers.length = 0
-
-  // Account IDs 1-7
-  const accountIds = [1, 2, 3, 4, 5, 6, 7]
+async function startDockerContainer(containerName: string) {
+  const state = containerStates[containerName]
+  if (!state) return
   
-  accountIds.forEach((accountId, idx) => {
-    // Initial staggered check
-    setTimeout(() => { checkContainer(accountId) }, idx * 500)
-    
-    // Repeated checks
-    const timerId = setInterval(() => checkContainer(accountId), POLL_INTERVAL)
-    pollTimers.push(timerId as unknown as number)
-  })
-}
-
-// Get container display info (online status and formatted last update)
-function getContainerDisplay(accountId: number) {
-  const state = getContainerState(accountId)
-  return {
-    online: !!state.online,
-    lastUpdatedText: state.lastUpdated ? state.lastUpdated.toLocaleString() : '',
-    isLoading: state.isLoading,
-    lastError: state.lastError
-  }
-}
-
-// Update your existing onMounted to add global click listener
-onMounted(() => {
-  selectedClientFromUrl.value = getUrlParams()
-  
-  // Listen for popstate events (browser back/forward)
-  window.addEventListener('popstate', () => {
-    selectedClientFromUrl.value = getUrlParams()
-  })
-
-  // Add global click listener to hide context menu
-  document.addEventListener('click', hideContextMenu)
-  
-  // Add global click listener for column selector
-  document.addEventListener('click', handleSummaryClickOutside)
-  
-  // Start container polling
-  scheduleContainerPolling()
-  
-  // Listen for account filter changes from other components
-  if (eventBus) {
-    eventBus.on('account-filter-changed', handleExternalAccountFilter)
-  }
-})
-
-// Update your existing onBeforeUnmount
-onBeforeUnmount(() => {
-  if (q._cleanup) {
-    q._cleanup()
-  }
-  
-  // Remove global click listener
-  document.removeEventListener('click', hideContextMenu)
-  document.removeEventListener('click', handleSummaryClickOutside)
-  
-  // Stop container polling
-  pollTimers.forEach(t => clearInterval(t))
-  pollTimers.length = 0
-  
-  // Clean up event listener
-  if (eventBus) {
-    eventBus.off('account-filter-changed', handleExternalAccountFilter)
-  }
-})
-
-// Add computed property to determine which menu items to show
-const contextMenuItems = computed(() => {
-  const items = [];
-  
-  // Always show Details
-  items.push({
-    icon: '📋',
-    label: 'Details',
-    action: 'details'
-  });
-  
-  // Show NLV Graph only if clicked on NLV column
-  if (contextMenu.value.columnId === 'nlv_val') {
-    items.push({
-      icon: '📊',
-      label: 'NLV Graph',
-      action: 'nlv-graph',
-      active: contextMenu.value.accountId ? isGraphActive(contextMenu.value.accountId, 'nlv') : false
-    });
-  }
-  
-  // Show Maintenance Margin Graph only if clicked on maintenance margin column
-  if (contextMenu.value.columnId === 'maintenance_val') {
-    items.push({
-      icon: '📈',
-      label: 'Maintenance Margin Graph',
-      action: 'mm-graph',
-      active: contextMenu.value.accountId ? isGraphActive(contextMenu.value.accountId, 'mm') : false
-    });
-  }
-  
-  return items;
-});
-
-// Add context menu handler function
-function handleContextMenuAction(action: string) {
-  if (!contextMenu.value.accountId) return;
-  
-  switch (action) {
-    case 'details':
-      handleDetails();
-      break;
-    case 'nlv-graph':
-      handleNlvGraph();
-      break;
-    case 'mm-graph':
-      handleMaintenanceGraph();
-      break;
-  }
-}
-
-// Add a helper function to convert UTC to PST
-function formatToPST(utcTimestamp: string | null): string {
-  if (!utcTimestamp) return 'N/A';
+  state.isStarting = true
+  state.isLoading = true
   
   try {
-    const date = new Date(utcTimestamp);
+    const response = await fetch(`${DOCKER_CONTROL_URL}?action=start&container=${containerName}`)
+    const data = await response.json()
     
-    // Convert to PST using Intl.DateTimeFormat
-    const pstFormatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'America/Los_Angeles', // PST/PDT timezone
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false // 24-hour format
-    });
-    
-    return pstFormatter.format(date);
+    if (data.success) {
+      showNotification('success', `Container ${containerName} started successfully`)
+      await checkContainerStatus(containerName)
+    } else {
+      showNotification('error', `Failed to start ${containerName}: ${data.error}`)
+    }
   } catch (error) {
-    console.error('Error formatting timestamp:', error);
-    return 'Invalid Date';
+    showNotification('error', `Error starting ${containerName}: ${error}`)
+  } finally {
+    state.isStarting = false
+    state.isLoading = false
   }
 }
 
-// Add active filters tracking for tag UI (similar to Positions)
-type ActiveSummaryFilter = { field: 'account'; value: string }
-const activeSummaryFilters = ref<ActiveSummaryFilter[]>([])
-
-function syncActiveSummaryFiltersFromGrid() {
-  const api = gridApi.value
-  const next: ActiveSummaryFilter[] = []
+async function stopDockerContainer(containerName: string) {
+  const state = containerStates[containerName]
+  if (!state) return
   
-  if (api) {
-    const model = api.getFilterModel?.() || {}
-    const getFilterValue = (field: string) => model?.[field]?.filter || model?.[field]?.values || null
+  state.isStopping = true
+  state.isLoading = true
+  
+  try {
+    const response = await fetch(`${DOCKER_CONTROL_URL}?action=stop&container=${containerName}`)
+    const data = await response.json()
     
-    const account = getFilterValue('account')
-    if (typeof account === 'string' && account.length) {
-      next.push({ field: 'account', value: account })
+    if (data.success) {
+      showNotification('success', `Container ${containerName} stopped successfully`)
+      await checkContainerStatus(containerName)
+    } else {
+      showNotification('error', `Failed to stop ${containerName}: ${data.error}`)
     }
-  }
-  
-  activeSummaryFilters.value = next
-}
-
-function handleExternalAccountFilter(payload: { accountId: string | null, source: string }) {
-  console.log('📊 [Summary] Received account filter:', payload)
-  
-  // Ignore if this component is the source
-  if (payload.source === 'summary') return
-  
-  const api = gridApi.value
-  if (!api) {
-    console.warn('📊 [Summary] Grid API not ready')
-    return
-  }
-  
-  isUpdatingFromUrl = true
-  
-  if (payload.accountId) {
-    // Apply filter to the account column
-    const currentModel = (api.getFilterModel && api.getFilterModel()) || {}
-    currentModel.account = { 
-      filterType: 'text',
-      type: 'equals', 
-      filter: payload.accountId 
-    }
-    
-    console.log('📊 [Summary] Applying filter model:', currentModel)
-    
-    if (typeof api.setFilterModel === 'function') {
-      api.setFilterModel(currentModel)
-    }
-    if (typeof api.onFilterChanged === 'function') {
-      api.onFilterChanged()
-    }
-    
-    // Update URL
-    writeFiltersToUrlFromModel(currentModel)
-  } else {
-    // Clear the account filter
-    clearSummaryFilter('account')
-  }
-  
-  syncActiveSummaryFiltersFromGrid()
-  
-  setTimeout(() => {
-    isUpdatingFromUrl = false
-  }, 100)
-}
-
-// Update handleSummaryAccountCellFilterClick to emit events (around line 1143)
-function handleSummaryAccountCellFilterClick(value: any) {
-  const api = gridApi.value
-  if (!api || value === undefined || value === null) return
-  
-  // Use normal ag-Grid filters for account field
-  const currentModel = (api.getFilterModel && api.getFilterModel()) || {}
-  currentModel.account = { 
-    filterType: 'text',
-    type: 'equals', 
-    filter: String(value) 
-  }
-  
-  if (typeof api.setFilterModel === 'function') {
-    api.setFilterModel(currentModel)
-  }
-  if (typeof api.onFilterChanged === 'function') {
-    api.onFilterChanged()
-  }
-  
-  // Persist to URL
-  writeFiltersToUrlFromModel(currentModel)
-  
-  syncActiveSummaryFiltersFromGrid()
-  
-  // Emit event for synchronization
-  if (eventBus) {
-    console.log('📊 [Summary] Emitting account filter change')
-    eventBus.emit('account-filter-changed', {
-      accountId: String(value),
-      source: 'summary'
-    })
+  } catch (error) {
+    showNotification('error', `Error stopping ${containerName}: ${error}`)
+  } finally {
+    state.isStopping = false
+    state.isLoading = false
   }
 }
 
-// Update clearSummaryFilter to emit events (around line 1158)
-function clearSummaryFilter(field: 'account') {
-  const api = gridApi.value
-  if (!api) return
+function scheduleContainerPolling() {
+  // Check all containers every 30 seconds
+  const containerNames = Object.keys(containerStates)
   
-  // Check if account filter was active before clearing
-  const currentModel = (api.getFilterModel && api.getFilterModel()) || {}
-  const hadAccountFilter = !!currentModel[field]
-  
-  // Clear ag-Grid filter for the field
-  delete currentModel[field]
-  
-  if (typeof api.setFilterModel === 'function') {
-    api.setFilterModel(currentModel)
-  }
-  if (typeof api.onFilterChanged === 'function') {
-    api.onFilterChanged()
-  }
-  
-  // Persist to URL
-  writeFiltersToUrlFromModel(currentModel)
-  
-  syncActiveSummaryFiltersFromGrid()
-  
-  // Emit event for synchronization if filter was active
-  if (hadAccountFilter && eventBus) {
-    console.log('📊 [Summary] Clearing account filter via event')
-    eventBus.emit('account-filter-changed', {
-      accountId: null,
-      source: 'summary'
-    })
-  }
-}
-
-// Update clearAllSummaryFilters to emit events (around line 1175)
-function clearAllSummaryFilters() {
-  const api = gridApi.value
-  if (!api) return
-  
-  // Check if account filter was active
-  const currentModel = api.getFilterModel?.() || {}
-  const hadAccountFilter = !!currentModel.account
-  
-  // Clear all ag-Grid filters
-  if (typeof api.setFilterModel === 'function') {
-    api.setFilterModel({})
-  }
-  if (typeof api.onFilterChanged === 'function') {
-    api.onFilterChanged()
-  }
-  
-  // Persist to URL
-  writeFiltersToUrlFromModel({})
-  
-  syncActiveSummaryFiltersFromGrid()
-  
-  // Emit event if account filter was cleared
-  if (hadAccountFilter && eventBus) {
-    console.log('📊 [Summary] Clearing all filters via event')
-    eventBus.emit('account-filter-changed', {
-      accountId: null,
-      source: 'summary'
-    })
-  }
-}
-
-// Update the grid watcher to prevent infinite loops
-let isUpdatingFromUrl = false
-
-watch(() => gridApi.value, (api) => {
-  if (!api) return
-  
-  const listener = () => {
-    if (!isUpdatingFromUrl) {
-      syncActiveSummaryFiltersFromGrid()
-      // Persist filter model to URL
-      const model = api.getFilterModel?.() || {}
-      writeFiltersToUrlFromModel(model)
-    }
-  }
-  
-  api.addEventListener?.('filterChanged', listener)
-}, { immediate: true })
-
-// Add URL parameter handling functions (missing from your current code)
-function parseFiltersFromUrl(): { account?: string } {
-  const url = new URL(window.location.href)
-  const account = url.searchParams.get('all_cts_clientId') || undefined
-  return { account }
-}
-
-function writeFiltersToUrlFromModel(model: any) {
-  const url = new URL(window.location.href)
-  
-  // Handle account filter
-  const acc = model?.account?.filter || ''
-  if (acc) {
-    url.searchParams.set('all_cts_clientId', acc)
-  } else {
-    url.searchParams.delete('all_cts_clientId')
-  }
-  
-  window.history.replaceState({}, '', url.toString())
-}
-
-// Add the missing graph toggle function
-function toggleGraph(accountId: number, type: 'nlv' | 'mm') {
-  console.log('📊 toggleGraph called with:', accountId, type)
-  
-  // Initialize if not exists
-  if (!graphVisibility[accountId]) {
-    graphVisibility[accountId] = { nlv: false, mm: false }
-  }
-  
-  // If clicking the same graph that's already active, close it
-  if (selectedAccountForHistory.value === accountId && selectedGraphType.value === type) {
-    selectedAccountForHistory.value = null
-    selectedGraphType.value = null
-    graphVisibility[accountId][type] = false
-    return
-  }
-  
-  // Close all other graphs first
-  Object.keys(graphVisibility).forEach(id => {
-    const numId = parseInt(id)
-    graphVisibility[numId] = { nlv: false, mm: false }
+  containerNames.forEach(name => {
+    checkContainerStatus(name)
+    const timer = setInterval(() => checkContainerStatus(name), 30000) as unknown as number
+    pollTimers.push(timer)
   })
-  
-  // Set new graph
-  graphVisibility[accountId][type] = true
-  selectedAccountForHistory.value = accountId
-  selectedGraphType.value = type
-  
-  console.log('📊 Graph visibility updated:', graphVisibility)
-  console.log('📊 Selected account/type:', accountId, type)
 }
 
-// Add the missing computed properties for chart data
-const currentHistoryQuery = computed(() => {
-  if (selectedGraphType.value === 'nlv') {
-    return nlvHistoryQuery
-  } else if (selectedGraphType.value === 'mm') {
-    return maintenanceHistoryQuery
-  }
-  return null
-})
+function showNotification(type: 'success' | 'error', message: string) {
+  const id = notificationIdCounter++
+  notifications.value.push({ id, type, message })
+  setTimeout(() => removeNotification(id), 5000)
+}
 
-const chartData = computed(() => {
-  const query = currentHistoryQuery.value
-  if (!query?.data.value || !Array.isArray(query.data.value)) return null
-  
-  const data = query.data.value
-  const labels = data.map(item => {
-    const date = new Date(item.fetched_at)
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-  })
-  
-  const values = selectedGraphType.value === 'nlv' 
-    ? data.map(item => parseFloat(item.nlv) || 0)
-    : data.map(item => parseFloat(item.maintenance) || 0)
-  
-  return {
-    labels,
-    datasets: [{
-      label: selectedGraphType.value === 'nlv' ? 'NLV' : 'Maintenance Margin',
-      data: values,
-      borderColor: selectedGraphType.value === 'nlv' ? '#3b82f6' : '#ef4444',
-      backgroundColor: selectedGraphType.value === 'nlv' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-      borderWidth: 2,
-      fill: true,
-      tension: 0.1
-    }]
+function removeNotification(id: number) {
+  const index = notifications.value.findIndex(n => n.id === id)
+  if (index !== -1) {
+    notifications.value.splice(index, 1)
   }
-})
-
-const chartOptions = computed(() => ({
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      display: true,
-      position: 'top' as const
-    },
-    title: {
-      display: true,
-      text: `${selectedGraphType.value === 'nlv' ? 'NLV' : 'Maintenance Margin'} History (Last 30 Days)`
-    }
-  },
-  scales: {
-    y: {
-      beginAtZero: false,
-      ticks: {
-        callback: function(value: any) {
-          return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD',
-            minimumFractionDigits: 0
-          }).format(value)
-        }
-      }
-    }
-  },
-  interaction: {
-    intersect: false,
-    mode: 'index' as const
-  }
-}))
-
-// ...existing code...
+}
 </script>
 
 <template>
@@ -1542,34 +1245,9 @@ const chartOptions = computed(() => ({
           </div>
         </div>
 
-        <!-- AG Grid Implementation - This should be the ONLY content -->
-        <div class="ag-theme-alpine summary-grid">
-          <AgGridVue
-            :columnDefs="columnDefs"
-            :rowData="regularRowData"
-            :pinnedBottomRowData="pinnedBottomRowData"
-            :modules="[AllCommunityModule]"
-            :defaultColDef="{
-              resizable: true,
-              sortable: true,
-              filter: true
-            }"
-            :gridOptions="{
-              domLayout: 'autoHeight',
-              suppressMenuHide: true,
-              enableBrowserTooltips: true,
-              getRowStyle: (params) => {
-                if (params.data?.isTotal) {
-                  return { 'font-weight': 'bold', 'background-color': '#f8f9fa' };
-                }
-                return null;
-              }
-            }"
-            @grid-ready="onGridReady"
-            class="summary-ag-grid"
-          />
-        </div>
-        
+        <!-- 15. REPLACE AG Grid with Tabulator div -->
+        <div ref="tableDiv" class="summary-grid"></div>
+
         <!-- Chart.js Graph Display Section -->
         <div v-if="selectedAccountForHistory && selectedGraphType" class="graph-section">
           <div v-if="currentHistoryQuery?.isLoading.value" class="graph-loading">
@@ -1770,7 +1448,112 @@ const chartOptions = computed(() => ({
   </div>
 </template>
 
+<style>
+/* 16. ADD Tabulator CSS import at the top of style section */
+@import 'tabulator-tables/dist/css/tabulator_modern.min.css';
+</style>
+
 <style scoped>
+/* 17. UPDATE grid styles - REMOVE all AG Grid specific styles */
+/* REMOVE all :deep(.ag-*) styles */
+
+.summary-grid {
+  margin-top: 1rem;
+  height: auto;
+  min-height: 200px;
+}
+
+/* 18. ADD Tabulator specific styles */
+:deep(.tabulator) {
+  background: white;
+  border: 1px solid #dee2e6;
+  font-size: 14px;
+}
+
+:deep(.tabulator-header) {
+  background: #f8f9fa;
+  border-bottom: 2px solid #dee2e6;
+  font-weight: 600;
+  padding-left: 0 !important;
+}
+
+:deep(.tabulator-col) {
+  border-right: 1px solid #dee2e6;
+  /*padding: 8px;*/
+}
+
+:deep(.tabulator-cell) {
+  border-right: 1px solid #e9ecef;
+  border-bottom: 1px solid #e9ecef;
+  padding: 4px;
+}
+
+:deep(.tabulator-row:hover) {
+  background-color: #f8f9fa;
+}
+
+:deep(.tabulator-row.tabulator-calcs) {
+  background-color: #f8f9fa;
+  font-weight: bold;
+  border-top: 2px solid #dee2e6;
+}
+
+:deep(.account-cell) {
+  display: flex;
+  gap: 4px;
+}
+
+:deep(.account-name) {
+  font-weight: 600;
+  color: #1f2a37;
+}
+
+:deep(.clickable-account .account-name) {
+  cursor: pointer;
+}
+
+:deep(.clickable-account .account-name:hover) {
+  color: #3b82f6;
+}
+
+:deep(.status-badge) {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 12px;
+  text-transform: uppercase;
+  align-self: flex-start;
+}
+
+:deep(.status-ok) {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+:deep(.status-stage1) {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+:deep(.status-stage2) {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+/*:deep(.cell-with-graph) {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}*/
+
+:deep(.negative) {
+  color: #dc3545;
+}
+
+:deep(.total-cell) {
+  font-weight: 700;
+}
+
 /* Notification System */
 .notification-container {
   position: fixed;
@@ -1855,126 +1638,6 @@ const chartOptions = computed(() => ({
     transform: translateX(0);
     opacity: 1;
   }
-}
-
-/* AG Grid Styles */
-.summary-grid {
-  margin-top: 1rem;
-  height: auto;
-  min-height: 200px;
-}
-
-.summary-ag-grid {
-  font-family: inherit;
-}
-
-:deep(.ag-header-cell) {
-  background: #f8f9fa;
-  border-bottom: 2px solid #dee2e6;
-  font-weight: 600;
-}
-
-:deep(.ag-cell) {
-  border-bottom: 1px solid #e9ecef;
-  padding: 0;
-}
-
-:deep(.ag-row:hover) {
-  background-color: #f8f9fa;
-}
-
-:deep(.number-cell) {
-  text-align: right;
-  font-weight: 600;
-}
-
-:deep(.negative) {
-  color: #dc3545;
-}
-
-:deep(.total-cell) {
-  font-weight: 700;
-  background-color: #f8f9fa;
-}
-
-:deep(.account-cell) {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-:deep(.account-name) {
-  font-weight: 600;
-  color: #1f2a37;
-  cursor: pointer;
-}
-
-:deep(.account-name:hover) {
-  color: #3b82f6;
-}
-
-:deep(.total-row .account-name) {
-  cursor: default;
-}
-
-:deep(.total-row .account-name:hover) {
-  color: #1f2a37;
-}
-
-:deep(.status-badge) {
-  font-size: 0.7rem;
-  font-weight: 600;
-  padding: 2px 6px;
-  border-radius: 12px;
-  text-transform: uppercase;
-  align-self: flex-start;
-}
-
-:deep(.status-ok) {
-  background-color: #d1fae5;
-  color: #065f46;
-}
-
-:deep(.status-stage1) {
-  background-color: #fef3c7;
-  color: #92400e;
-}
-
-:deep(.status-stage2) {
-  background-color: #fee2e2;
-  color: #991b1b;
-}
-
-:deep(.cell-with-graph) {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-}
-
-:deep(.cell-value) {
-  flex: 1;
-}
-
-:deep(.graph-btn) {
-  background: none;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  padding: 2px 4px;
-  cursor: pointer;
-  font-size: 12px;
-  transition: all 0.2s;
-}
-
-:deep(.graph-btn:hover) {
-  background-color: #f3f4f6;
-  border-color: #9ca3af;
-}
-
-:deep(.graph-btn.active) {
-  background-color: #dbeafe;
-  border-color: #3b82f6;
-  color: #1d4ed8;
 }
 
 /* Fix header layout to position tools on the right */
@@ -2533,12 +2196,5 @@ const chartOptions = computed(() => ({
 
 .formula {
   font-weight: 500;
-}
-</style>
-
-<style>
-.ag-cell-value.ag-cell.ag-cell-not-inline-editing.ag-cell-normal-height.number-cell {
-    border-right: var(--ag-pinned-column-border);
-    padding: 0 2px;
 }
 </style>

@@ -23,9 +23,3 @@ async function bootstrap() {
     .mount('#app')
 }
 bootstrap()
-// const supabaseUrl = import.meta.env.VITE_SUPA_URL
-// const supabaseAnon = import.meta.env.VITE_SUPA_ANON
-
-// createApp(App)
-//   .use(router)
-//   .mount('#app')
