@@ -39,6 +39,7 @@ ChartJS.register(
 const props = withDefaults(defineProps<SummaryProps>(), {
   showHeaderLink: false,
   userId: null
+  //userId: "67e578fd-2cf7-48a4-b028-a11a3f89bb9b"
 })
 
 const emit = defineEmits<{
@@ -125,6 +126,7 @@ onMounted(() => {
 
 // Historical data query - directly in component
 const supabase = useSupabase()
+const queryClient = useQueryClient()
 
 // NLV History Query
 const nlvHistoryQuery = useQuery({
@@ -979,6 +981,14 @@ const contextMenuItems = computed(() => {
     })
   }
   
+  if (contextMenu.value.accountId) {
+    items.push({
+      icon: '✏️',
+      label: 'Rename Account',
+      action: 'rename_account'
+    })
+  }
+  
   return items
 })
 
@@ -1002,6 +1012,20 @@ function handleContextMenuAction(action: string) {
     case 'mm_graph':
       toggleGraph(accountId, 'mm')
       break
+    case 'rename_account': {
+      // Find the account row
+      const accountRow = calculatedMetrics.value?.find(m => {
+        const mAccountId = typeof m.nlv_internal_account_id === 'string' 
+          ? parseInt(m.nlv_internal_account_id) 
+          : m.nlv_internal_account_id
+        return mAccountId === accountId
+      })
+      openRenameAccountDialog(
+        accountRow?.nlv_internal_account_id?.toString() || '',
+        accountRow?.legal_entity || ''
+      )
+      break
+    }
   }
   
   hideContextMenu()
@@ -1269,6 +1293,39 @@ function writeSummaryColumnWidthsToUrl(widths: Record<string, number>) {
 
 // Store column widths
 const summaryColumnWidths = ref<Record<string, number>>(parseSummaryColumnWidthsFromUrl())
+
+const showRenameDialog = ref(false)
+const renameAccountId = ref<string | null>(null)
+const renameAccountCurrent = ref<string>('')
+const renameAccountValue = ref<string>('')
+
+function openRenameAccountDialog(accountId: string, currentName: string) {
+  renameAccountId.value = accountId
+  renameAccountCurrent.value = currentName
+  renameAccountValue.value = currentName
+  showRenameDialog.value = true // <-- FIXED
+}
+
+async function saveAccountAlias() {
+  if (!props.userId || !renameAccountId.value) return
+  try {
+    const { error } = await supabase
+      .schema('hf')
+      .from('user_account_alias')
+      .upsert({
+        user_id: props.userId,
+        internal_account_id: renameAccountId.value,
+        alias: renameAccountValue.value,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id,internal_account_id' })
+    if (error) throw error
+    showRenameDialog.value = false
+    await queryClient.invalidateQueries() // or just the summary query key
+    showNotification('success', 'Account renamed')
+  } catch (err: any) {
+    showNotification('error', err.message)
+  }
+}
 </script>
 
 <template>
@@ -1567,6 +1624,18 @@ const summaryColumnWidths = ref<Record<string, number>>(parseSummaryColumnWidths
             </span>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rename Account Dialog -->
+  <div v-if="showRenameDialog" class="rename-dialog-backdrop">
+    <div class="rename-dialog">
+      <h3>Rename Account</h3>
+      <input v-model="renameAccountValue" :placeholder="renameAccountCurrent" />
+      <div class="dialog-actions">
+        <button @click="saveAccountAlias">Save</button>
+        <button @click="showRenameDialog = false">Cancel</button>
       </div>
     </div>
   </div>
@@ -1930,7 +1999,7 @@ const summaryColumnWidths = ref<Record<string, number>>(parseSummaryColumnWidths
 
 @keyframes slideIn {
   from {
-    transform: translateX(100%);
+       transform: translateX(100%);
     opacity: 0;
   }
   to {
@@ -2340,5 +2409,104 @@ const summaryColumnWidths = ref<Record<string, number>>(parseSummaryColumnWidths
 
 :deep(.header-close-btn:active) {
   background: rgba(239, 68, 68, 0.2);
+}
+
+/* Rename Account Dialog Styles */
+.rename-dialog-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+.rename-dialog {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  width: 400px;
+  max-width: 90%;
+}
+
+.rename-dialog h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.rename-dialog input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 16px;
+  color: #374151;
+  margin-bottom: 1rem;
+}
+
+.rename-dialog .dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.rename-dialog button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.rename-dialog button:hover {
+  background: #f3f4f6;
+}
+
+.rename-dialog button:active {
+  background: #e5e7eb;
+}
+
+.rename-dialog button:first-child {
+  background: #007bff;
+  color: white;
+}
+
+.rename-dialog button:first-child:hover {
+  background: #0056b3;
+}
+
+.rename-dialog button:first-child:active {
+  background: #004085;
+}
+.rename-dialog-backdrop {
+  position: fixed !important;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.3);
+  z-index: 99999 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.rename-dialog {
+  background: white;
+  padding: 2rem;
+  border-radius: 1rem;
+  z-index: 100000 !important;
+  min-width: 320px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+}
+.dialog-actions button {
+  width: auto;
+  margin: 5px 4px;
+  padding: 8px 10px;
 }
 </style>
