@@ -24,6 +24,7 @@ import {
 } from 'chart.js'
 import { Line } from 'vue-chartjs'
 import type { SummaryProps } from '../index'
+import html2canvas from 'html2canvas'
 
 // Register Chart.js components
 ChartJS.register(
@@ -38,8 +39,8 @@ ChartJS.register(
 
 const props = withDefaults(defineProps<SummaryProps>(), {
   showHeaderLink: false,
-  userId: null
-  //userId: "67e578fd-2cf7-48a4-b028-a11a3f89bb9b"
+  //userId: null
+  userId: "67e578fd-2cf7-48a4-b028-a11a3f89bb9b"
 })
 
 const emit = defineEmits<{
@@ -1326,6 +1327,119 @@ async function saveAccountAlias() {
     showNotification('error', err.message)
   }
 }
+
+// Screenshot functionality
+const showScreenshotsModal = ref(false)
+const screenshots = ref<any[]>([])
+const previewScreenshot = ref<any | null>(null)
+const screenshotsLoading = ref(false)
+const takingScreenshot = ref(false)
+const showScreenshotNameModal = ref(false)
+const screenshotName = ref('')
+
+// Open name modal
+function promptScreenshotName() {
+  screenshotName.value = ''
+  showScreenshotNameModal.value = true
+}
+
+// Actual screenshot save (called after user confirms name)
+async function takeScreenshotConfirmed() {
+  if (!tableDiv.value) {
+    showScreenshotNameModal.value = false
+    return
+  }
+  showScreenshotNameModal.value = false
+  takingScreenshot.value = true
+  try {
+    const canvas = await html2canvas(tableDiv.value)
+    const base64 = canvas.toDataURL('image/png')
+
+    const { error } = await supabase
+      .schema('hf')
+      .from('summary_screenshots')
+      .insert([{
+        user_id: props.userId,
+        created_at: new Date().toISOString(),
+        image_data: base64.replace(/^data:image\/png;base64,/, ''),
+        name: screenshotName.value ? screenshotName.value.trim() : null,
+        archived: false,
+        meta: {
+          filters: {
+            account: activeSummaryFilters.value,
+            columns: allSummaryColumnOptions.filter(col => summaryVisibleCols.value.includes(col.field as SummaryColumnField)).map(col => col.field)
+          }
+        }
+      }])
+    if (error) throw error
+
+    showToast('success', 'Screenshot saved!')
+    fetchScreenshots()
+  } catch (err: any) {
+    showToast('error', 'Screenshot failed', err.message)
+  } finally {
+    takingScreenshot.value = false
+  }
+}
+
+// Mark screenshot archived (soft-delete)
+async function archiveScreenshot(id: number) {
+  try {
+    const { error } = await supabase
+      .schema('hf')
+      .from('summary_screenshots')
+      .update({ archived: true })
+      .eq('id', id)
+    if (error) throw error
+    showToast('success', 'Screenshot archived')
+    fetchScreenshots()
+  } catch (err: any) {
+    showToast('error', 'Archive failed', err.message)
+  }
+}
+
+// Update fetchScreenshots to ignore archived items
+async function fetchScreenshots() {
+  if (!props.userId) {
+    screenshots.value = []
+    return
+  }
+  screenshotsLoading.value = true
+  const { data, error } = await supabase
+    .schema('hf')
+    .from('summary_screenshots')
+    .select('*')
+    .eq('user_id', props.userId)
+    .eq('archived', false)             // <-- only non-archived
+    .order('created_at', { ascending: false })
+    .limit(20)
+  if (!error) screenshots.value = data || []
+  screenshotsLoading.value = false
+}
+
+// Toast system
+type ToastType = 'success' | 'error' | 'warning' | 'info'
+interface Toast {
+  id: number
+  type: ToastType
+  title: string
+  message?: string
+}
+const toasts = ref<Toast[]>([])
+let toastIdCounter = 0
+function showToast(type: ToastType, title: string, message?: string) {
+  const id = toastIdCounter++
+  toasts.value.push({ id, type, title, message })
+  setTimeout(() => removeToast(id), 5000)
+}
+function removeToast(id: number) {
+  const index = toasts.value.findIndex(t => t.id === id)
+  if (index !== -1) toasts.value.splice(index, 1)
+}
+
+watch(showScreenshotsModal, (open) => {
+  if (open) fetchScreenshots()
+})
 </script>
 
 <template>
@@ -1365,6 +1479,12 @@ async function saveAccountAlias() {
             <span v-else>Summary</span>
           </h2>
           <div class="header-tools">
+            <button @click="promptScreenshotName" class="screenshot-btn" title="Take Screenshot" :disabled="takingScreenshot">
+              <span v-if="takingScreenshot" class="screenshot-spinner"></span>
+              <span v-else>📸</span>
+            </button>
+            <button @click="showScreenshotsModal = true" class="screenshot-btn" title="See Old Screenshots">🖼️</button>
+            
             <button 
               ref="summaryColumnsBtnRef" 
               class="columns-btn" 
@@ -1639,11 +1759,356 @@ async function saveAccountAlias() {
       </div>
     </div>
   </div>
+
+  <!-- Modal for old screenshots -->
+  <div v-if="showScreenshotsModal" class="screenshots-modal">
+    <div class="modal-content">
+      <h3 class="screenshots-title">Past Screenshots</h3>
+      <div v-if="screenshotsLoading" class="screenshots-loading">Loading screenshots...</div>
+      <div v-else-if="screenshots.length === 0" class="screenshots-empty">No screenshots yet.</div>
+      <div v-else class="screenshots-list-vertical">
+        <div
+          v-for="shot in screenshots"
+          :key="shot.id"
+          class="screenshot-list-item"
+          @click="previewScreenshot = shot"
+        >
+          <img
+            :src="`data:image/png;base64,${shot.image_data}`"
+            class="screenshot-thumb"
+            :alt="`Screenshot taken at ${new Date(shot.created_at).toLocaleString()}`"
+          />
+          <div class="screenshot-list-meta">
+            <strong v-if="shot.name">{{ shot.name }}</strong>
+            <span v-else style="color:#666; font-style:italic; display:block;">(Unnamed)</span>
+            <span>{{ new Date(shot.created_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) }}</span>
+            <div style="display:flex; gap:8px; margin-top:6px;">
+              <a
+                :href="`data:image/png;base64,${shot.image_data}`"
+                :download="`positions-screenshot-${shot.id}.png`"
+                class="screenshot-download-link"
+                @click.stop
+              >⬇️ Download</a>
+              <button class="screenshot-archive-btn" @click.stop="archiveScreenshot(shot.id)" title="Archive screenshot" style="background:none;border:1px solid #e9ecef;padding:4px 8px;border-radius:6px;cursor:pointer;">
+                🗄️ Archive
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="dialog-actions">
+        <button @click="showScreenshotsModal = false" class="screenshots-close">Close</button>
+      </div>
+    </div>
+    <!-- Image preview modal -->
+    <div v-if="previewScreenshot" class="screenshot-preview-modal" @click.self="previewScreenshot = null">
+      <div class="screenshot-preview-content">
+        <img :src="`data:image/png;base64,${previewScreenshot.image_data}`" class="screenshot-full-img" />
+        <div class="screenshot-preview-meta">
+          <span>{{ new Date(previewScreenshot.created_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) }}</span>
+          <a
+            :href="`data:image/png;base64,${previewScreenshot.image_data}`"
+            :download="`positions-screenshot-${previewScreenshot.id}.png`"
+            class="screenshot-download-link"
+          >⬇️ Download</a>
+          <button @click="previewScreenshot = null" class="screenshot-preview-close">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div v-if="showScreenshotNameModal" class="rename-dialog-backdrop">
+    <div class="rename-dialog">
+      <h3>Name screenshot</h3>
+      <input v-model="screenshotName" placeholder="Enter a name (optional)" />
+      <div class="dialog-actions" style="justify-content:flex-start;">
+        <button @click="takeScreenshotConfirmed">Save & Capture</button>
+        <button @click="showScreenshotNameModal = false">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container">
+    <TransitionGroup name="toast" tag="div">
+      <div
+        v-for="toast in toasts"
+        :key="toast.id"
+        :class="['toast', `toast-${toast.type}`]"
+        @click="removeToast(toast.id)"
+      >
+        <div class="toast-icon">
+          <span v-if="toast.type === 'success'">✅</span>
+          <span v-else-if="toast.type === 'error'">❌</span>
+          <span v-else-if="toast.type === 'warning'">⚠️</span>
+          <span v-else>ℹ️</span>
+        </div>
+        <div class="toast-content">
+          <div class="toast-title">{{ toast.title }}</div>
+          <div v-if="toast.message" class="toast-message">{{ toast.message }}</div>
+        </div>
+        <button class="toast-close" @click.stop="removeToast(toast.id)">×</button>
+      </div>
+    </TransitionGroup>
+  </div>
 </template>
 
 <style>
 /* 16. ADD Tabulator CSS import at the top of style section */
 @import 'tabulator-tables/dist/css/tabulator_modern.min.css';
+
+.screenshots-list-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  width: 100%;
+  margin-bottom: 1.5rem;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+.screenshot-list-item {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  padding: 0.8rem 1rem;
+  border-radius: 0.7rem;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.screenshot-list-item:hover {
+  background: #e3f2fd;
+}
+.screenshot-thumb {
+  width: 110px;
+  height: 60px;
+  object-fit: contain;
+  border-radius: 0.4rem;
+  border: 1px solid #ccc;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+.screenshot-list-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 15px;
+  color: #555;
+}
+.screenshot-download-link {
+  color: #1976d2;
+  font-weight: 500;
+  text-decoration: none;
+  font-size: 1.05em;
+  margin-top: 2px;
+  transition: color 0.18s;
+}
+.screenshot-download-link:hover {
+  color: #0d47a1;
+  text-decoration: underline;
+}
+
+/* Preview modal */
+.screenshot-preview-modal {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.45); z-index: 100000;
+  display: flex; align-items: center; justify-content: center;
+}
+.screenshot-preview-content {
+  background: #fff;
+  border-radius: 1.2rem;
+  padding: 2rem;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 90vw;
+  max-height: 90vh;
+}
+.screenshot-full-img {
+  max-width: 80vw;
+  max-height: 60vh;
+  border-radius: 0.7rem;
+  border: 1.5px solid #e9ecef;
+  margin-bottom: 1.2rem;
+  background: #f8f9fa;
+}
+.screenshot-preview-meta {
+  display: flex;
+  gap: 1.2rem;
+  align-items: center;
+  font-size: 1.1em;
+  color: #444;
+}
+.screenshot-preview-close {
+  margin-left: 1.5rem;
+  padding: 0.4rem 1.2rem;
+  border-radius: 7px;
+  border: 1.5px solid #007bff;
+  background: #007bff;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s, border 0.18s;
+}
+.screenshot-preview-close:hover {
+  background: #0056b3;
+  border-color: #0056b3;
+}
+button.screenshot-btn {
+    background: transparent;
+    padding: 2px 2px;
+    border: 1px solid #dee2e6;
+}
+.screenshot-btn[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.screenshot-spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #e3e3e3;
+  border-top: 2px solid #007bff;
+  border-radius: 50%;
+  animation: screenshot-spin 0.7s linear infinite;
+  vertical-align: middle;
+}
+@keyframes screenshot-spin {
+  0% { transform: rotate(0deg);}
+  100% { transform: rotate(360deg);}
+}
+/* Toast notification styles */
+.toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 10000;
+  pointer-events: none;
+  max-width: 400px;
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  pointer-events: auto;
+  min-width: 300px;
+  position: relative;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.toast-success {
+  background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+  color: #155724;
+  border-left: 4px solid #28a745;
+}
+
+.toast-error {
+  background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+  color: #721c24;
+  border-left: 4px solid #dc3545;
+}
+
+.toast-warning {
+  background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+  color: #856404;
+  border-left: 4px solid #ffc107;
+}
+
+.toast-info {
+  background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+  color: #0c5460;
+  border-left: 4px solid #17a2b8;
+}
+
+.toast-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.toast-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.toast-title {
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1.3;
+  margin-bottom: 4px;
+}
+
+.toast-message {
+  font-size: 13px;
+  line-height: 1.4;
+  opacity: 0.9;
+}
+
+.toast-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.6;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.toast-close:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+/* Toast animations */
+.toast-enter-active {
+  transition: all 0.3s ease-out;
+}
+
+.toast-leave-active {
+  transition: all 0.3s ease-in;
+}
+
+.toast-enter-from {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+.toast-leave-to {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+.toast-move {
+  transition: transform 0.3s ease;
+}
+.screenshots-modal {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.25); z-index: 99999;
+  display: flex; align-items: center; justify-content: center;
+}
+.screenshots-modal .modal-content {
+  background: #fff; padding: 1rem; border-radius: 1rem; min-width: 350px; max-width: 90vw;
+}
+.screenshots-list { display: flex; flex-wrap: wrap; gap: 1rem; }
+.screenshot-item { max-width: 220px; }
+.screenshot-meta { font-size: 12px; color: #888; margin-top: 4px; }
 </style>
 
 <style scoped>
