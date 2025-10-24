@@ -92,7 +92,8 @@ const containerStates = reactive<Record<string, ContainerState>>({
   'ovlg': { isLoading: false, isStarting: false, isStopping: false },
   'sc': { isLoading: false, isStarting: false, isStopping: false },
   'stamp': { isLoading: false, isStarting: false, isStopping: false },
-  'vk': { isLoading: false, isStarting: false, isStopping: false }
+  'vk': { isLoading: false, isStarting: false, isStopping: false },
+  'jkmdm': { isLoading: false, isStarting: false, isStopping: false }
 })
 
 // Notifications
@@ -1139,7 +1140,8 @@ function getContainerNameFromAccountId(clientNumber: number): string {
     4: 'ovlg',
     5: 'sc',
     6: 'stamp',
-    7: 'vk'
+    7: 'vk',
+    8: 'jkmdm'
   }
   return containerMap[clientNumber] || ''
 }
@@ -1166,8 +1168,8 @@ async function checkContainerStatus(containerName: string) {
     const response = await fetch(url) 
     const data = await response.json()
     
-    if (data.success) {
-      state.online = data.status === 'running'
+    if (data.maintenance_margin_amount) {
+      state.online = true
       state.lastUpdated = new Date()
       state.lastError = null
     } else {
