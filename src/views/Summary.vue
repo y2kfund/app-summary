@@ -1167,7 +1167,7 @@ async function checkContainerStatus(containerName: string) {
     : `https://ibkr.${containerName}.to5001.aiworkspace.pro/api/maintenance`
     const response = await fetch(url) 
     const data = await response.json()
-    
+    //console.log(`Checked ${containerName} status:`, data)
     if (data.maintenance_margin_amount) {
       state.online = true
       state.lastUpdated = new Date()
@@ -1177,6 +1177,8 @@ async function checkContainerStatus(containerName: string) {
     }
   } catch (error) {
     //console.error(`Error checking ${containerName} status:`, error)
+    state.online = false
+    state.lastUpdated = new Date()
     state.lastError = String(error)
   } finally {
     state.isLoading = false
@@ -1191,10 +1193,10 @@ async function startDockerContainer(containerName: string) {
   state.isLoading = true
   
   try {
-    const response = await fetch(`${DOCKER_CONTROL_URL}?action=start&container=${containerName}`)
+    const response = await fetch(`${DOCKER_CONTROL_URL}?action=start&container_name=${containerName}`)
     const data = await response.json()
     
-    if (data.success) {
+    if (data.status === 'success') {
       showNotification('success', `Container ${containerName} started successfully`)
       await checkContainerStatus(containerName)
     } else {
@@ -1216,10 +1218,10 @@ async function stopDockerContainer(containerName: string) {
   state.isLoading = true
   
   try {
-    const response = await fetch(`${DOCKER_CONTROL_URL}?action=stop&container=${containerName}`)
+    const response = await fetch(`${DOCKER_CONTROL_URL}?action=stop&container_name=${containerName}`)
     const data = await response.json()
     
-    if (data.success) {
+    if (data.status === 'success') {
       showNotification('success', `Container ${containerName} stopped successfully`)
       await checkContainerStatus(containerName)
     } else {
