@@ -648,14 +648,28 @@ function initializeTabulator() {
 
     tabulator.on('cellContext', (e: any, cell: any) => {
       e.preventDefault()
-      const data = cell.getRow().getData()
-      if (!data.isTotal) {
-        showContextMenu(e, 
-          typeof data.nlv_internal_account_id === 'string' 
-            ? parseInt(data.nlv_internal_account_id) 
+      const row = cell.getRow();
+      const data = row.getData();
+      const element = row.getElement();
+
+      // Detect Tabulator's bottomCalc row by CSS class
+      const isBottomCalc = element && element.classList.contains('tabulator-calcs');
+
+      // Show total context menu for NLV/Maintenance columns in bottomCalc row
+      if (isBottomCalc && (cell.getField() === 'nlv_val' || cell.getField() === 'maintenance_val')) {
+        showTotalContextMenu(e, cell.getField());
+        return;
+      }
+
+      // Otherwise, use your normal logic for account rows
+      if (data && data.nlv_internal_account_id !== undefined) {
+        showContextMenu(
+          e,
+          typeof data.nlv_internal_account_id === 'string'
+            ? parseInt(data.nlv_internal_account_id)
             : data.nlv_internal_account_id,
           cell.getField()
-        )
+        );
       }
     })
 
@@ -953,7 +967,8 @@ function hideContextMenu() {
 
 // Context menu items computed property
 const contextMenuItems = computed(() => {
-  if (!contextMenu.value.accountId) return []
+  console.log('🔍 Computing context menu items for accountId:', contextMenu.value.accountId, 'columnId:', contextMenu.value.columnId)
+  if (typeof contextMenu.value.accountId === 'undefined') return []
   
   const items = []
   
@@ -990,6 +1005,27 @@ const contextMenuItems = computed(() => {
       action: 'rename_account'
     })
   }
+
+  if (contextMenu.value.accountId === null) {
+    // Total row context menu
+    const items = []
+    if (contextMenu.value.columnId === 'nlv_val') {
+      items.push({
+        icon: '📊',
+        label: 'Total NLV Graph',
+        action: 'total_nlv_graph',
+        active: showTotalGraph.value && totalGraphType.value === 'nlv'
+      })
+    } else if (contextMenu.value.columnId === 'maintenance_val') {
+      items.push({
+        icon: '📈',
+        label: 'Total Maintenance Graph',
+        action: 'total_mm_graph',
+        active: showTotalGraph.value && totalGraphType.value === 'mm'
+      })
+    }
+    return items
+  }
   
   return items
 })
@@ -1001,6 +1037,19 @@ function isGraphActive(accountId: number, type: 'nlv' | 'mm'): boolean {
 
 // Handle context menu actions
 function handleContextMenuAction(action: string) {
+  if (action === 'total_nlv_graph') {
+    showTotalGraph.value = !showTotalGraph.value || totalGraphType.value !== 'nlv'
+    totalGraphType.value = 'nlv'
+    hideContextMenu()
+    return
+  }
+  if (action === 'total_mm_graph') {
+    showTotalGraph.value = !showTotalGraph.value || totalGraphType.value !== 'mm'
+    totalGraphType.value = 'mm'
+    hideContextMenu()
+    return
+  }
+
   const accountId = contextMenu.value.accountId
   if (!accountId) return
   
@@ -1069,6 +1118,31 @@ const chartData = computed(() => {
       {
         label: isNlv ? 'NLV' : 'Maintenance Margin',
         data: data.map((item: any) => isNlv ? item.nlv : item.maintenance),
+        borderColor: isNlv ? '#3b82f6' : '#10b981',
+        backgroundColor: isNlv ? 'rgba(59, 130, 246, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+        tension: 0.4,
+        fill: true
+      }
+    ]
+  }
+})
+
+const totalChartData = computed(() => {
+  let query = null
+  if (totalGraphType.value === 'nlv') query = totalNlvHistoryQuery
+  if (totalGraphType.value === 'mm') query = totalMaintenanceHistoryQuery
+  if (!query?.data.value?.length) return null
+  const data = query.data.value
+  const isNlv = totalGraphType.value === 'nlv'
+  return {
+    labels: data.map((item: any) => {
+      const date = new Date(item.fetched_at)
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    }),
+    datasets: [
+      {
+        label: isNlv ? 'Total NLV' : 'Total Maintenance Margin',
+        data: data.map((item: any) => isNlv ? item.total : item.total),
         borderColor: isNlv ? '#3b82f6' : '#10b981',
         backgroundColor: isNlv ? 'rgba(59, 130, 246, 0.1)' : 'rgba(16, 185, 129, 0.1)',
         tension: 0.4,
@@ -1469,6 +1543,43 @@ async function saveScreenshotRename() {
 watch(showScreenshotsModal, (open) => {
   if (open) fetchScreenshots()
 })
+
+// Add state for total row graph
+const showTotalGraph = ref(false)
+const totalGraphType = ref<'nlv' | 'mm' | null>(null)
+
+// Supabase queries for total row graphs
+const totalNlvHistoryQuery = useQuery({
+  queryKey: ['totalNlvHistory'],
+  queryFn: async () => {
+    const { data, error } = await supabase.schema('hf').rpc('get_nlv_run_summaries')
+    if (error) throw error
+    return data || []
+  },
+  enabled: computed(() => showTotalGraph.value && totalGraphType.value === 'nlv')
+})
+
+const totalMaintenanceHistoryQuery = useQuery({
+  queryKey: ['totalMaintenanceHistory'],
+  queryFn: async () => {
+    const { data, error } = await supabase.schema('hf').rpc('get_maintenance_run_summaries')
+    if (error) throw error
+    return data || []
+  },
+  enabled: computed(() => showTotalGraph.value && totalGraphType.value === 'mm')
+})
+
+// Helper for total row context menu
+function showTotalContextMenu(e: MouseEvent, columnId: string) {
+  contextMenu.value = {
+    visible: true,
+    x: e.clientX,
+    y: e.clientY,
+    accountId: null, // No accountId for total row
+    columnId,
+    fetchedAt: null
+  }
+}
 </script>
 
 <template>
@@ -1600,6 +1711,31 @@ watch(showScreenshotsModal, (open) => {
           </div>
           <div v-else class="graph-empty">
             No {{ selectedGraphType === 'nlv' ? 'NLV' : 'Maintenance Margin' }} historical data available
+          </div>
+        </div>
+
+        <!-- Total row graph display -->
+        <div v-if="showTotalGraph && totalGraphType" class="graph-section">
+          <div v-if="totalGraphType === 'nlv' && totalNlvHistoryQuery.isLoading.value" class="graph-loading">
+            Loading Total NLV historical data...
+          </div>
+          <div v-else-if="totalGraphType === 'mm' && totalMaintenanceHistoryQuery.isLoading.value" class="graph-loading">
+            Loading Total Maintenance Margin historical data...
+          </div>
+          <div v-else-if="totalChartData" class="chart-section">
+            <h4>
+              {{ totalGraphType === 'nlv' ? 'Total NLV' : 'Total Maintenance Margin' }} History
+            </h4>
+            <div class="chart-container">
+              <Line 
+                :data="totalChartData" 
+                :options="chartOptions" 
+                :height="300"
+              />
+            </div>
+          </div>
+          <div v-else class="graph-empty">
+            No historical data available
           </div>
         </div>
 
