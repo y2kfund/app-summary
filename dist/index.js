@@ -11089,7 +11089,7 @@ function ap(s, e) {
         userId: e || "none",
         accessibleAccountIds: a.length > 0 ? a : "all"
       });
-      const { data: l, error: h } = await t.schema("hf").rpc("get_nlv_margin_with_excess_previously_fetched", {
+      const { data: l, error: h } = await t.schema("hf").rpc("get_nlv_margin_with_excess", {
         p_limit: s
       });
       if (h) throw h;
