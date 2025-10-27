@@ -23693,7 +23693,7 @@ const M0 = { class: "notification-container" }, I0 = { class: "notification-cont
           const H = v === "vk" ? "https://ibkr.vk.to5001.aiworkspace.pro/api/maintenance" : `https://ibkr.${v}.to5001.aiworkspace.pro/api/maintenance`, k = await (await fetch(H)).json();
           k.maintenance_margin_amount ? (b.online = !0, b.lastUpdated = /* @__PURE__ */ new Date(), b.lastError = null) : b.lastError = k.error || "Unknown error";
         } catch (H) {
-          b.lastError = String(H);
+          b.online = !1, b.lastUpdated = /* @__PURE__ */ new Date(), b.lastError = String(H);
         } finally {
           b.isLoading = !1;
         }
@@ -23704,8 +23704,8 @@ const M0 = { class: "notification-container" }, I0 = { class: "notification-cont
       if (b) {
         b.isStarting = !0, b.isLoading = !0;
         try {
-          const R = await (await fetch(`${Dh}?action=start&container=${v}`)).json();
-          R.success ? (Ft("success", `Container ${v} started successfully`), await XA(v)) : Ft("error", `Failed to start ${v}: ${R.error}`);
+          const R = await (await fetch(`${Dh}?action=start&container_name=${v}`)).json();
+          R.status === "success" ? (Ft("success", `Container ${v} started successfully`), await XA(v)) : Ft("error", `Failed to start ${v}: ${R.error}`);
         } catch (H) {
           Ft("error", `Error starting ${v}: ${H}`);
         } finally {
@@ -23718,8 +23718,8 @@ const M0 = { class: "notification-container" }, I0 = { class: "notification-cont
       if (b) {
         b.isStopping = !0, b.isLoading = !0;
         try {
-          const R = await (await fetch(`${Dh}?action=stop&container=${v}`)).json();
-          R.success ? (Ft("success", `Container ${v} stopped successfully`), await XA(v)) : Ft("error", `Failed to stop ${v}: ${R.error}`);
+          const R = await (await fetch(`${Dh}?action=stop&container_name=${v}`)).json();
+          R.status === "success" ? (Ft("success", `Container ${v} stopped successfully`), await XA(v)) : Ft("error", `Failed to stop ${v}: ${R.error}`);
         } catch (H) {
           Ft("error", `Error stopping ${v}: ${H}`);
         } finally {
@@ -24339,7 +24339,7 @@ const M0 = { class: "notification-container" }, I0 = { class: "notification-cont
   for (const [i, A] of e)
     t[i] = A;
   return t;
-}, YQ = /* @__PURE__ */ PQ(OQ, [["__scopeId", "data-v-6310ddb0"]]);
+}, YQ = /* @__PURE__ */ PQ(OQ, [["__scopeId", "data-v-629b7523"]]);
 export {
   YQ as Summary,
   YQ as default
