@@ -1757,7 +1757,8 @@ watch(filteredMetrics, (newVal) => {
           </h2>
           <div class="header-tools">
             <button class="btn" @click="showArchivedClients = !showArchivedClients">
-              {{ showArchivedClients ? 'Hide Archived Clients' : 'Show Archived Clients' }}
+              <span v-if="showArchivedClients">🗄️</span>
+              <span v-else>📁</span>
             </button>
             <button @click="openAddClientDialog" class="btn" title="Add Client">➕</button>
             <button @click="promptScreenshotName" class="screenshot-btn" title="Take Screenshot" :disabled="takingScreenshot">
