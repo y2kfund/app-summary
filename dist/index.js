@@ -23261,7 +23261,7 @@ const $0 = {
   for (const [i, A] of e)
     t[i] = A;
   return t;
-}, pF = /* @__PURE__ */ cd(gF, [["__scopeId", "data-v-6799d916"]]), mF = { class: "notification-container" }, bF = { class: "notification-content" }, wF = { class: "notification-icon" }, BF = { class: "notification-message" }, vF = ["onClick"], CF = { class: "dashboard-container" }, yF = {
+}, pF = /* @__PURE__ */ cd(gF, [["__scopeId", "data-v-9b85856d"]]), mF = { class: "notification-container" }, bF = { class: "notification-content" }, wF = { class: "notification-icon" }, BF = { class: "notification-message" }, vF = ["onClick"], CF = { class: "dashboard-container" }, yF = {
   key: 0,
   class: "loading"
 }, EF = {
@@ -24733,7 +24733,7 @@ const $0 = {
       ], 64);
     };
   }
-}), Px = /* @__PURE__ */ cd(_x, [["__scopeId", "data-v-bfcc7fe8"]]);
+}), Px = /* @__PURE__ */ cd(_x, [["__scopeId", "data-v-b5fc21a2"]]);
 export {
   Px as Summary,
   Px as default

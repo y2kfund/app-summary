@@ -2400,6 +2400,8 @@ button.edit-btn {
     border: none;
     background: transparent;
     cursor: pointer;
+    width: auto;
+    padding: 0 3px;
 }
 </style>
 
@@ -3268,5 +3270,9 @@ button.edit-btn {
 }
 button.btn {
     cursor: pointer;
+    width: auto;
+    padding: 2px 5px;
+    background: transparent;
+    border: 1px solid #dee2e6;
 }
 </style>

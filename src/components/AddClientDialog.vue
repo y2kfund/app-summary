@@ -220,7 +220,7 @@ async function handleSubmit() {
 .modal-card {
   background: #fff;
   border-radius: 14px;
-  padding: 2.2rem 2.5rem 2rem 2.5rem;
+  padding: 1.5rem;
   min-width: 370px;
   max-width: 420px;
   box-shadow: 0 6px 32px rgba(0,0,0,0.18);
@@ -347,5 +347,8 @@ h2 {
   background: #fafbfc;
   transition: border 0.2s;
   box-sizing: border-box;
+}
+.radio-group input[type="radio"] {
+  width: auto;
 }
 </style>
