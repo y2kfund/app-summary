@@ -55,7 +55,8 @@ let tabulator: Tabulator | null = null
 // REMOVE these:
 // const gridApi = ref<GridApi | null>(null)
 // const columnApiRef = ref<ColumnApi | null>(null)
-
+const showArchivedClients = ref(false)
+//const q = useNlvMarginQuery(10, props.userId)
 const q = useNlvMarginQuery(10, props.userId)
 
 // State for graph visibility and selected account
@@ -257,22 +258,31 @@ const calculatedMetrics = computed(() => {
 });
 
 const filteredMetrics = computed(() => {
-  if (!selectedClientFromUrl.value || !calculatedMetrics.value) {
-    return calculatedMetrics.value;
+  // Always filter by archived status first
+  let metrics = calculatedMetrics.value || [];
+  metrics = metrics.filter(item => {
+    if (showArchivedClients.value) return item.archived === true;
+    return item.archived !== true;
+  });
+  console.log('Archived only:', metrics)
+
+  // Then filter by selected client from URL if present
+  if (!selectedClientFromUrl.value) {
+    return metrics;
   }
-  
+
   const clientNumber = extractClientNumber(selectedClientFromUrl.value);
   if (clientNumber === null) {
-    return calculatedMetrics.value;
+    return metrics;
   }
-  
+
   // Find the specific client (assuming Client1 is index 0, Client2 is index 1, etc.)
   const targetIndex = clientNumber - 1;
-  if (targetIndex >= 0 && targetIndex < calculatedMetrics.value.length) {
-    return [calculatedMetrics.value[targetIndex]];
+  if (targetIndex >= 0 && targetIndex < metrics.length) {
+    return [metrics[targetIndex]];
   }
-  
-  return calculatedMetrics.value;
+
+  return metrics;
 });
 
 const allAccountsSummary = computed(() => {
@@ -1042,6 +1052,21 @@ const contextMenuItems = computed(() => {
     }
     return items
   }
+
+  const item = calculatedMetrics.value?.find(m => {
+    const mAccountId = typeof m.nlv_internal_account_id === 'string' 
+      ? parseInt(m.nlv_internal_account_id) 
+      : m.nlv_internal_account_id
+    return mAccountId === contextMenu.value.accountId
+  })
+
+  if (item) {
+    items.push({
+      icon: item.archived ? '♻️' : '🗄️',
+      label: item.archived ? 'Recover Client' : 'Archive Client',
+      action: item.archived ? 'recover_client' : 'archive_client'
+    })
+  }
   
   return items
 })
@@ -1078,6 +1103,12 @@ function handleContextMenuAction(action: string) {
       break
     case 'mm_graph':
       toggleGraph(accountId, 'mm')
+      break
+    case 'archive_client':
+      archiveClient(contextMenu.value.accountId?.toString() || '')
+      break
+    case 'recover_client':
+      recoverClient(contextMenu.value.accountId?.toString() || '')
       break
     case 'rename_account': {
       // Find the account row
@@ -1650,6 +1681,42 @@ async function saveManualEdit() {
     showToast('error', 'Update failed', err.message)
   }
 }
+
+async function archiveClient(accountId: string) {
+  try {
+    const { error } = await supabase
+      .schema('hf')
+      .from('user_accounts_master')
+      .update({ archived: true })
+      .eq('internal_account_id', accountId)
+    if (error) throw error
+    showToast('success', 'Client archived')
+    await queryClient.invalidateQueries()
+  } catch (err: any) {
+    showToast('error', 'Archive failed', err.message)
+  }
+}
+
+async function recoverClient(accountId: string) {
+  try {
+    const { error } = await supabase
+      .schema('hf')
+      .from('user_accounts_master')
+      .update({ archived: false })
+      .eq('internal_account_id', accountId)
+    if (error) throw error
+    showToast('success', 'Client recovered')
+    await queryClient.invalidateQueries()
+  } catch (err: any) {
+    showToast('error', 'Recover failed', err.message)
+  }
+}
+
+watch(filteredMetrics, (newVal) => {
+  if (tabulator) {
+    tabulator.replaceData(gridRowData.value)
+  }
+})
 </script>
 
 <template>
@@ -1689,6 +1756,9 @@ async function saveManualEdit() {
             <span v-else>Summary</span>
           </h2>
           <div class="header-tools">
+            <button class="btn" @click="showArchivedClients = !showArchivedClients">
+              {{ showArchivedClients ? 'Hide Archived Clients' : 'Show Archived Clients' }}
+            </button>
             <button @click="openAddClientDialog" class="btn" title="Add Client">➕</button>
             <button @click="promptScreenshotName" class="screenshot-btn" title="Take Screenshot" :disabled="takingScreenshot">
               <span v-if="takingScreenshot" class="screenshot-spinner"></span>
