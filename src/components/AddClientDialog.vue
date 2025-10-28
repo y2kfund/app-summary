@@ -10,7 +10,7 @@
           </div>
           <div class="form-group">
             <label>Broker Account ID</label>
-            <input v-model="form.broker_account_id" type="text" required />
+            <input v-model="form.broker_account_id" type="text" />
           </div>
         </div>
         <div class="form-row">
@@ -108,10 +108,10 @@ async function handleSubmit() {
     error.value = 'Client name required'
     return
   }
-  if (!form.broker_account_id) {
+  /*if (!form.broker_account_id) {
     error.value = 'Broker Account ID required'
     return
-  }
+  }*/
   /*if (!form.flex_query_token) {
     error.value = 'Flex Query Token required'
     return
