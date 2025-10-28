@@ -25,6 +25,7 @@ import {
 import { Line } from 'vue-chartjs'
 import type { SummaryProps } from '../index'
 import html2canvas from 'html2canvas'
+import AddClientDialog from '../components/AddClientDialog.vue'
 
 // Register Chart.js components
 ChartJS.register(
@@ -185,6 +186,15 @@ const maintenanceHistoryQuery = useQuery({
   staleTime: 60_000,
   enabled: computed(() => !!selectedAccountForHistory.value && selectedGraphType.value === 'mm')
 })
+
+const showAddClientDialog = ref(false)
+function handleClientAdded() {
+  showAddClientDialog.value = false
+  queryClient.invalidateQueries() // refresh summary data
+}
+function openAddClientDialog() {
+  showAddClientDialog.value = true
+}
 
 // Helper function to format numbers as currency
 function formatCurrency(value: number | string | null | undefined): string {
@@ -468,10 +478,14 @@ function initializeTabulator() {
           : (data.addlGmvAllowedNlvSide < 0 ? 'STAGE 1 EXHAUSTED' : 'OK')
         const statusClass = status === 'STAGE 2 EXHAUSTED' ? 'status-stage2' : 
                            status === 'STAGE 1 EXHAUSTED' ? 'status-stage1' : 'status-ok'
-        return `<div class="account-cell clickable-account">
-          <span class="account-name">${data.legal_entity || data.account}</span>
-          <span class="status-badge ${statusClass}">${status}</span>
-        </div>`
+
+        let html = `<span class="account-name">${data.legal_entity || data.account}</span>
+        <span class="status-badge ${statusClass}">${status}</span>`
+        if (manualSyncAccounts.value.has(data.nlv_internal_account_id)) {
+          html += `<button class="edit-btn" data-id="${data.nlv_internal_account_id}">✏️</button>`
+        }
+
+        return `<div class="account-cell clickable-account">${html}</div>`
       },
       titleFormatter: (cell: any) => {
         return `<div class="header-with-close">
@@ -480,7 +494,9 @@ function initializeTabulator() {
       },
       cellClick: (e: any, cell: any) => {
         const data = cell.getRow().getData()
-        if (!data.isTotal) {
+        if (e.target.classList.contains('edit-btn')) {
+          openEditModal(data.nlv_internal_account_id, data.nlv_val, data.maintenance_val)
+        } else if (!data.isTotal) {
           handleSummaryAccountCellFilterClick(data.account)
         }
       }
@@ -1580,6 +1596,60 @@ function showTotalContextMenu(e: MouseEvent, columnId: string) {
     fetchedAt: null
   }
 }
+
+// Add a computed to detect manual sync accounts
+const manualSyncAccounts = computed(() => {
+  // You may need to fetch sync_mode from user_accounts_master
+  // For now, assume calculatedMetrics includes sync_mode
+  return new Set(
+    calculatedMetrics.value
+      .filter(item => item.sync_mode === 'manual')
+      .map(item => item.nlv_internal_account_id)
+  )
+})
+
+// Add state for editing
+const editingAccountId = ref<string | null>(null)
+const editNlvValue = ref<number | null>(null)
+const editMaintenanceValue = ref<number | null>(null)
+
+// Function to open edit modal
+function openEditModal(accountId: string, nlv: number, maintenance: number) {
+  editingAccountId.value = accountId
+  editNlvValue.value = nlv
+  editMaintenanceValue.value = maintenance
+}
+
+// Function to save edits
+async function saveManualEdit() {
+  if (!editingAccountId.value) return
+  try {
+    const now = new Date().toISOString()
+    // Insert new netliquidation row
+    await supabase
+      .schema('hf')
+      .from('netliquidation')
+      .insert([{
+        internal_account_id: editingAccountId.value,
+        nlv: editNlvValue.value,
+        fetched_at: now
+      }])
+    // Insert new maintenance_margin row
+    await supabase
+      .schema('hf')
+      .from('maintenance_margin')
+      .insert([{
+        internal_account_id: editingAccountId.value,
+        maintenance: editMaintenanceValue.value,
+        fetched_at: now
+      }])
+    showToast('success', 'Values updated')
+    editingAccountId.value = null
+    await queryClient.invalidateQueries()
+  } catch (err: any) {
+    showToast('error', 'Update failed', err.message)
+  }
+}
 </script>
 
 <template>
@@ -1619,6 +1689,7 @@ function showTotalContextMenu(e: MouseEvent, columnId: string) {
             <span v-else>Summary</span>
           </h2>
           <div class="header-tools">
+            <button @click="openAddClientDialog" class="btn" title="Add Client">➕</button>
             <button @click="promptScreenshotName" class="screenshot-btn" title="Take Screenshot" :disabled="takingScreenshot">
               <span v-if="takingScreenshot" class="screenshot-spinner"></span>
               <span v-else>📸</span>
@@ -1671,6 +1742,11 @@ function showTotalContextMenu(e: MouseEvent, columnId: string) {
                 <button class="btn-done" @click="closeSummaryColumnsPopup">Done</button>
               </div>
             </div>
+            <AddClientDialog
+              :show="showAddClientDialog"
+              :onClose="() => showAddClientDialog = false"
+              :onAdded="handleClientAdded"
+            />
           </div>
         </div>
 
@@ -2047,6 +2123,20 @@ function showTotalContextMenu(e: MouseEvent, columnId: string) {
       </div>
     </div>
   </div>
+
+  <div v-if="editingAccountId" class="rename-dialog-backdrop">
+    <div class="rename-dialog">
+      <h3>Edit NLV & Maintenance Margin</h3>
+      <label>NLV:</label>
+      <input type="number" v-model="editNlvValue" />
+      <label>Maintenance Margin:</label>
+      <input type="number" v-model="editMaintenanceValue" />
+      <div class="dialog-actions">
+        <button @click="saveManualEdit">Save</button>
+        <button @click="editingAccountId = null">Cancel</button>
+      </div>
+    </div>
+  </div>
 </template>
 
 <style>
@@ -2306,6 +2396,11 @@ button.screenshot-btn {
 .screenshots-list { display: flex; flex-wrap: wrap; gap: 1rem; }
 .screenshot-item { max-width: 220px; }
 .screenshot-meta { font-size: 12px; color: #888; margin-top: 4px; }
+button.edit-btn {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+}
 </style>
 
 <style scoped>
@@ -3170,5 +3265,8 @@ button.screenshot-btn {
   width: auto;
   margin: 5px 4px;
   padding: 8px 10px;
+}
+button.btn {
+    cursor: pointer;
 }
 </style>
