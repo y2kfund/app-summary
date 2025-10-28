@@ -1756,7 +1756,7 @@ watch(filteredMetrics, (newVal) => {
             <span v-else>Summary</span>
           </h2>
           <div class="header-tools">
-            <button class="btn" @click="showArchivedClients = !showArchivedClients">
+            <button class="btn" @click="showArchivedClients = !showArchivedClients" :title="showArchivedClients ? `Hide archived clients` : `Show archived clients`">
               <span v-if="showArchivedClients">🗄️</span>
               <span v-else>📁</span>
             </button>

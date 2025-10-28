@@ -23262,82 +23262,82 @@ const tF = {
 }, xF = {
   key: 1,
   class: "error"
-}, UF = { key: 2 }, HF = { class: "metric-block" }, _F = { class: "block-header" }, LF = { key: 1 }, RF = { class: "header-tools" }, TF = { key: 0 }, SF = { key: 1 }, MF = ["disabled"], IF = {
+}, UF = { key: 2 }, HF = { class: "metric-block" }, _F = { class: "block-header" }, LF = { key: 1 }, RF = { class: "header-tools" }, TF = ["title"], SF = { key: 0 }, MF = { key: 1 }, IF = ["disabled"], kF = {
   key: 0,
   class: "screenshot-spinner"
-}, kF = { key: 1 }, DF = { class: "columns-content" }, OF = ["value"], PF = { class: "column-label" }, KF = { class: "columns-footer" }, VF = {
+}, DF = { key: 1 }, OF = { class: "columns-content" }, PF = ["value"], KF = { class: "column-label" }, VF = { class: "columns-footer" }, zF = {
   key: 0,
   class: "summary-filters-bar"
-}, zF = { class: "filters-tags" }, NF = ["onClick"], GF = {
+}, NF = { class: "filters-tags" }, GF = ["onClick"], WF = {
   key: 1,
   class: "graph-section"
-}, WF = {
+}, XF = {
   key: 0,
   class: "graph-loading"
-}, XF = {
+}, jF = {
   key: 1,
   class: "graph-error"
-}, jF = {
+}, JF = {
   key: 2,
   class: "chart-section"
-}, JF = { class: "chart-container" }, YF = {
+}, YF = { class: "chart-container" }, ZF = {
   key: 3,
   class: "graph-empty"
-}, ZF = {
+}, $F = {
   key: 2,
   class: "graph-section"
-}, $F = {
-  key: 0,
-  class: "graph-loading"
 }, qF = {
-  key: 1,
+  key: 0,
   class: "graph-loading"
 }, eQ = {
+  key: 1,
+  class: "graph-loading"
+}, tQ = {
   key: 2,
   class: "chart-section"
-}, tQ = { class: "chart-container" }, iQ = {
+}, iQ = { class: "chart-container" }, AQ = {
   key: 3,
   class: "graph-empty"
-}, AQ = { class: "breakdown-header" }, sQ = { class: "breakdown-header-left" }, nQ = { class: "breakdown-header-right" }, rQ = { class: "docker-control-section" }, oQ = ["disabled", "onClick"], aQ = { key: 0 }, lQ = { key: 1 }, hQ = ["disabled", "onClick"], cQ = { key: 0 }, uQ = { key: 1 }, dQ = { class: "breakdown-columns" }, fQ = { class: "breakdown-stage stage-1" }, gQ = { class: "stage-item" }, pQ = { class: "item-value" }, mQ = { class: "formula" }, bQ = { class: "stage-item" }, wQ = { class: "item-value" }, BQ = { class: "formula" }, vQ = { class: "stage-item" }, CQ = { class: "item-value" }, yQ = { class: "formula" }, EQ = { class: "stage-item" }, FQ = { class: "item-value" }, QQ = { class: "formula" }, xQ = { class: "breakdown-stage stage-2" }, UQ = { class: "stage-item" }, HQ = { class: "item-value" }, _Q = { class: "formula" }, LQ = { class: "stage-item" }, RQ = { class: "item-value" }, TQ = { class: "formula" }, SQ = { class: "stage-item" }, MQ = { class: "item-value" }, IQ = { class: "formula" }, kQ = { class: "stage-item" }, DQ = { class: "item-value" }, OQ = { class: "formula" }, PQ = ["onClick"], KQ = { class: "context-menu-icon" }, VQ = {
+}, sQ = { class: "breakdown-header" }, nQ = { class: "breakdown-header-left" }, rQ = { class: "breakdown-header-right" }, oQ = { class: "docker-control-section" }, aQ = ["disabled", "onClick"], lQ = { key: 0 }, hQ = { key: 1 }, cQ = ["disabled", "onClick"], uQ = { key: 0 }, dQ = { key: 1 }, fQ = { class: "breakdown-columns" }, gQ = { class: "breakdown-stage stage-1" }, pQ = { class: "stage-item" }, mQ = { class: "item-value" }, bQ = { class: "formula" }, wQ = { class: "stage-item" }, BQ = { class: "item-value" }, vQ = { class: "formula" }, CQ = { class: "stage-item" }, yQ = { class: "item-value" }, EQ = { class: "formula" }, FQ = { class: "stage-item" }, QQ = { class: "item-value" }, xQ = { class: "formula" }, UQ = { class: "breakdown-stage stage-2" }, HQ = { class: "stage-item" }, _Q = { class: "item-value" }, LQ = { class: "formula" }, RQ = { class: "stage-item" }, TQ = { class: "item-value" }, SQ = { class: "formula" }, MQ = { class: "stage-item" }, IQ = { class: "item-value" }, kQ = { class: "formula" }, DQ = { class: "stage-item" }, OQ = { class: "item-value" }, PQ = { class: "formula" }, KQ = ["onClick"], VQ = { class: "context-menu-icon" }, zQ = {
   key: 0,
   class: "active-indicator"
-}, zQ = {
+}, NQ = {
   key: 0,
   class: "context-menu-separator"
-}, NQ = { class: "context-menu-info" }, GQ = { class: "context-menu-value" }, WQ = {
+}, GQ = { class: "context-menu-info" }, WQ = { class: "context-menu-value" }, XQ = {
   key: 0,
   class: "rename-dialog-backdrop"
-}, XQ = { class: "rename-dialog" }, jQ = ["placeholder"], JQ = { class: "dialog-actions" }, YQ = {
+}, jQ = { class: "rename-dialog" }, JQ = ["placeholder"], YQ = { class: "dialog-actions" }, ZQ = {
   key: 1,
   class: "screenshots-modal"
-}, ZQ = { class: "modal-content" }, $Q = {
+}, $Q = { class: "modal-content" }, qQ = {
   key: 0,
   class: "screenshots-loading"
-}, qQ = {
+}, ex = {
   key: 1,
   class: "screenshots-empty"
-}, ex = {
+}, tx = {
   key: 2,
   class: "screenshots-list-vertical"
-}, tx = ["onClick"], ix = ["src", "alt"], Ax = { class: "screenshot-list-meta" }, sx = { key: 0 }, nx = {
+}, ix = ["onClick"], Ax = ["src", "alt"], sx = { class: "screenshot-list-meta" }, nx = { key: 0 }, rx = {
   key: 1,
   style: { color: "#666", "font-style": "italic", display: "block" }
-}, rx = { style: { display: "flex", gap: "8px", "margin-top": "6px" } }, ox = ["href", "download"], ax = ["onClick"], lx = ["onClick"], hx = { class: "dialog-actions" }, cx = { class: "screenshot-preview-content" }, ux = ["src"], dx = { class: "screenshot-preview-meta" }, fx = ["href", "download"], gx = {
+}, ox = { style: { display: "flex", gap: "8px", "margin-top": "6px" } }, ax = ["href", "download"], lx = ["onClick"], hx = ["onClick"], cx = { class: "dialog-actions" }, ux = { class: "screenshot-preview-content" }, dx = ["src"], fx = { class: "screenshot-preview-meta" }, gx = ["href", "download"], px = {
   key: 2,
   class: "rename-dialog-backdrop"
-}, px = { class: "rename-dialog" }, mx = {
+}, mx = { class: "rename-dialog" }, bx = {
   class: "dialog-actions",
   style: { "justify-content": "flex-start" }
-}, bx = { class: "toast-container" }, wx = ["onClick"], Bx = { class: "toast-icon" }, vx = { key: 0 }, Cx = { key: 1 }, yx = { key: 2 }, Ex = { key: 3 }, Fx = { class: "toast-content" }, Qx = { class: "toast-title" }, xx = {
+}, wx = { class: "toast-container" }, Bx = ["onClick"], vx = { class: "toast-icon" }, Cx = { key: 0 }, yx = { key: 1 }, Ex = { key: 2 }, Fx = { key: 3 }, Qx = { class: "toast-content" }, xx = { class: "toast-title" }, Ux = {
   key: 0,
   class: "toast-message"
-}, Ux = ["onClick"], Hx = {
+}, Hx = ["onClick"], _x = {
   key: 3,
   class: "rename-dialog-backdrop"
-}, _x = { class: "rename-dialog" }, Lx = { class: "dialog-actions" }, Rx = {
+}, Lx = { class: "rename-dialog" }, Rx = { class: "dialog-actions" }, Tx = {
   key: 4,
   class: "rename-dialog-backdrop"
-}, Tx = { class: "rename-dialog" }, Sx = { class: "dialog-actions" }, Jh = "https://ibkr-docker-manage.aiworkspace.pro/docker_control.php", Mx = /* @__PURE__ */ Hn({
+}, Sx = { class: "rename-dialog" }, Mx = { class: "dialog-actions" }, Jh = "https://ibkr-docker-manage.aiworkspace.pro/docker_control.php", Ix = /* @__PURE__ */ Hn({
   __name: "Summary",
   props: {
     showHeaderLink: { type: Boolean, default: !1 },
@@ -24278,10 +24278,11 @@ const tF = {
                 v("div", RF, [
                   v("button", {
                     class: "btn",
-                    onClick: p[0] || (p[0] = (y) => r.value = !r.value)
+                    onClick: p[0] || (p[0] = (y) => r.value = !r.value),
+                    title: r.value ? "Hide archived clients" : "Show archived clients"
                   }, [
-                    r.value ? (D(), O("span", TF, "🗄️")) : (D(), O("span", SF, "📁"))
-                  ]),
+                    r.value ? (D(), O("span", SF, "🗄️")) : (D(), O("span", MF, "📁"))
+                  ], 8, TF),
                   v("button", {
                     onClick: _,
                     class: "btn",
@@ -24293,8 +24294,8 @@ const tF = {
                     title: "Take Screenshot",
                     disabled: as.value
                   }, [
-                    as.value ? (D(), O("span", IF)) : (D(), O("span", kF, "📸"))
-                  ], 8, MF),
+                    as.value ? (D(), O("span", kF)) : (D(), O("span", DF, "📸"))
+                  ], 8, IF),
                   v("button", {
                     onClick: p[1] || (p[1] = (y) => rs.value = !0),
                     class: "screenshot-btn",
@@ -24337,7 +24338,7 @@ const tF = {
                     p[25] || (p[25] = v("div", { class: "columns-header" }, [
                       v("span", { class: "columns-title" }, "Columns")
                     ], -1)),
-                    v("div", DF, [
+                    v("div", OF, [
                       (D(), O(St, null, oi(G, (y) => v("label", {
                         key: y.field,
                         class: "column-option"
@@ -24347,13 +24348,13 @@ const tF = {
                           value: y.field,
                           "onUpdate:modelValue": p[3] || (p[3] = (V) => le.value = V),
                           class: "column-checkbox"
-                        }, null, 8, OF), [
+                        }, null, 8, PF), [
                           [Gd, le.value]
                         ]),
-                        v("span", PF, $(y.label), 1)
+                        v("span", KF, $(y.label), 1)
                       ])), 64))
                     ]),
-                    v("div", KF, [
+                    v("div", VF, [
                       v("button", {
                         class: "btn-link",
                         onClick: p[4] || (p[4] = (y) => le.value = G.map((V) => V.field))
@@ -24371,9 +24372,9 @@ const tF = {
                   }, null, 8, ["show", "onClose"])
                 ])
               ]),
-              ts.value.length ? (D(), O("div", VF, [
+              ts.value.length ? (D(), O("div", zF, [
                 p[26] || (p[26] = v("span", { class: "filters-label" }, "Filtered by:", -1)),
-                v("div", zF, [
+                v("div", NF, [
                   (D(!0), O(St, null, oi(ts.value, (y) => (D(), O("span", {
                     key: `${y.field}-${y.value}`,
                     class: "filter-tag"
@@ -24384,7 +24385,7 @@ const tF = {
                       class: "tag-clear",
                       onClick: (V) => fd(y.field),
                       "aria-label": "Clear filter"
-                    }, "✕", 8, NF)
+                    }, "✕", 8, GF)
                   ]))), 128)),
                   v("button", {
                     class: "btn btn-clear-all",
@@ -24397,29 +24398,29 @@ const tF = {
                 ref: A,
                 class: "summary-grid"
               }, null, 512),
-              a.value && l.value ? (D(), O("div", GF, [
-                (R = is.value) != null && R.isLoading.value ? (D(), O("div", WF, " Loading " + $(l.value === "nlv" ? "NLV" : "Maintenance Margin") + " historical data... ", 1)) : (k = is.value) != null && k.isError.value ? (D(), O("div", XF, " Error loading " + $(l.value === "nlv" ? "NLV" : "Maintenance Margin") + " historical data: " + $(is.value.error.value), 1)) : wa.value ? (D(), O("div", jF, [
+              a.value && l.value ? (D(), O("div", WF, [
+                (R = is.value) != null && R.isLoading.value ? (D(), O("div", XF, " Loading " + $(l.value === "nlv" ? "NLV" : "Maintenance Margin") + " historical data... ", 1)) : (k = is.value) != null && k.isError.value ? (D(), O("div", jF, " Error loading " + $(l.value === "nlv" ? "NLV" : "Maintenance Margin") + " historical data: " + $(is.value.error.value), 1)) : wa.value ? (D(), O("div", JF, [
                   v("h4", null, $(l.value === "nlv" ? "NLV" : "Maintenance Margin") + " History ", 1),
-                  v("div", JF, [
+                  v("div", YF, [
                     ms(Mt(Jl), {
                       data: wa.value,
                       options: va,
                       height: 300
                     }, null, 8, ["data"])
                   ])
-                ])) : (D(), O("div", YF, " No " + $(l.value === "nlv" ? "NLV" : "Maintenance Margin") + " historical data available ", 1))
+                ])) : (D(), O("div", ZF, " No " + $(l.value === "nlv" ? "NLV" : "Maintenance Margin") + " historical data available ", 1))
               ])) : Ee("", !0),
-              wt.value && Oe.value ? (D(), O("div", ZF, [
-                Oe.value === "nlv" && Mt(Ea).isLoading.value ? (D(), O("div", $F, " Loading Total NLV historical data... ")) : Oe.value === "mm" && Mt(Fa).isLoading.value ? (D(), O("div", qF, " Loading Total Maintenance Margin historical data... ")) : Ba.value ? (D(), O("div", eQ, [
+              wt.value && Oe.value ? (D(), O("div", $F, [
+                Oe.value === "nlv" && Mt(Ea).isLoading.value ? (D(), O("div", qF, " Loading Total NLV historical data... ")) : Oe.value === "mm" && Mt(Fa).isLoading.value ? (D(), O("div", eQ, " Loading Total Maintenance Margin historical data... ")) : Ba.value ? (D(), O("div", tQ, [
                   v("h4", null, $(Oe.value === "nlv" ? "Total NLV" : "Total Maintenance Margin") + " History ", 1),
-                  v("div", tQ, [
+                  v("div", iQ, [
                     ms(Mt(Jl), {
                       data: Ba.value,
                       options: va,
                       height: 300
                     }, null, 8, ["data"])
                   ])
-                ])) : (D(), O("div", iQ, " No historical data available "))
+                ])) : (D(), O("div", AQ, " No historical data available "))
               ])) : Ee("", !0),
               (D(!0), O(St, null, oi(K.value, (y) => {
                 var V, Ve, iA, gs, Qa, xa, Ua, Ha, _a, La, Ra, Ta;
@@ -24427,16 +24428,16 @@ const tF = {
                   key: `breakdown-${typeof y.nlv_internal_account_id == "string" ? parseInt(y.nlv_internal_account_id) : y.nlv_internal_account_id}`,
                   class: "calculation-breakdown"
                 }, [
-                  v("div", AQ, [
-                    v("div", sQ, [
+                  v("div", sQ, [
+                    v("div", nQ, [
                       v("div", null, " Calculation breakdown for " + $(y.legal_entity || `Client${((V = T.value) == null ? void 0 : V.findIndex((Y) => {
                         const fe = typeof Y.nlv_internal_account_id == "string" ? parseInt(Y.nlv_internal_account_id) : Y.nlv_internal_account_id, he = typeof y.nlv_internal_account_id == "string" ? parseInt(y.nlv_internal_account_id) : y.nlv_internal_account_id;
                         return fe === he;
                       })) + 1}`) + ": ", 1),
                       p[27] || (p[27] = v("div", null, "Assumptions: maintenance margin (m) = 30%", -1))
                     ]),
-                    v("div", nQ, [
-                      v("div", rQ, [
+                    v("div", rQ, [
+                      v("div", oQ, [
                         v("div", {
                           class: ps(["container-status-badge", jn(((Ve = T.value) == null ? void 0 : Ve.findIndex((Y) => {
                             const fe = typeof Y.nlv_internal_account_id == "string" ? parseInt(Y.nlv_internal_account_id) : Y.nlv_internal_account_id, he = typeof y.nlv_internal_account_id == "string" ? parseInt(y.nlv_internal_account_id) : y.nlv_internal_account_id;
@@ -24467,8 +24468,8 @@ const tF = {
                           (Ta = u[ni(((Ra = T.value) == null ? void 0 : Ra.findIndex((Y) => {
                             const fe = typeof Y.nlv_internal_account_id == "string" ? parseInt(Y.nlv_internal_account_id) : Y.nlv_internal_account_id, he = typeof y.nlv_internal_account_id == "string" ? parseInt(y.nlv_internal_account_id) : y.nlv_internal_account_id;
                             return fe === he;
-                          })) + 1)]) != null && Ta.isStopping ? (D(), O("span", cQ, "Stopping...")) : (D(), O("span", uQ, "⏹️ Stop Container"))
-                        ], 8, hQ)) : (D(), O("button", {
+                          })) + 1)]) != null && Ta.isStopping ? (D(), O("span", uQ, "Stopping...")) : (D(), O("span", dQ, "⏹️ Stop Container"))
+                        ], 8, cQ)) : (D(), O("button", {
                           key: 0,
                           class: "docker-control-btn start-btn",
                           disabled: (xa = u[ni(((Qa = T.value) == null ? void 0 : Qa.findIndex((Y) => {
@@ -24486,63 +24487,63 @@ const tF = {
                           (Ha = u[ni(((Ua = T.value) == null ? void 0 : Ua.findIndex((Y) => {
                             const fe = typeof Y.nlv_internal_account_id == "string" ? parseInt(Y.nlv_internal_account_id) : Y.nlv_internal_account_id, he = typeof y.nlv_internal_account_id == "string" ? parseInt(y.nlv_internal_account_id) : y.nlv_internal_account_id;
                             return fe === he;
-                          })) + 1)]) != null && Ha.isStarting ? (D(), O("span", aQ, "Starting...")) : (D(), O("span", lQ, "▶️ Start Container"))
-                        ], 8, oQ))
+                          })) + 1)]) != null && Ha.isStarting ? (D(), O("span", lQ, "Starting...")) : (D(), O("span", hQ, "▶️ Start Container"))
+                        ], 8, aQ))
                       ])
                     ])
                   ]),
-                  v("div", dQ, [
-                    v("div", fQ, [
+                  v("div", fQ, [
+                    v("div", gQ, [
                       p[32] || (p[32] = v("div", { class: "stage-header" }, "Stage-1 (drop d = 15%)", -1)),
-                      v("div", gQ, [
+                      v("div", pQ, [
                         p[28] || (p[28] = v("div", { class: "item-label" }, "Max GMV that survives stop-adding threshold", -1)),
-                        v("div", pQ, [
-                          v("span", mQ, "Gmax = NLV / [ 1 - (1 - d) x (1 - m) ] = " + $(F(y.maxGmvNlvSide)), 1)
+                        v("div", mQ, [
+                          v("span", bQ, "Gmax = NLV / [ 1 - (1 - d) x (1 - m) ] = " + $(F(y.maxGmvNlvSide)), 1)
                         ])
                       ]),
-                      v("div", bQ, [
+                      v("div", wQ, [
                         p[29] || (p[29] = v("div", { class: "item-label" }, "Max Maintenance margin (Before drop) to survive drop", -1)),
-                        v("div", wQ, [
-                          v("span", BQ, "Mk = Gmax x m = " + $(F(y.mkNlvSide)), 1)
+                        v("div", BQ, [
+                          v("span", vQ, "Mk = Gmax x m = " + $(F(y.mkNlvSide)), 1)
                         ])
                       ]),
-                      v("div", vQ, [
+                      v("div", CQ, [
                         p[30] || (p[30] = v("div", { class: "item-label" }, "Maintenance margin headroom", -1)),
-                        v("div", CQ, [
-                          v("span", yQ, "Mk - M = " + $(F(y.maintnanceMarginHeadroomNlvSide)), 1)
+                        v("div", yQ, [
+                          v("span", EQ, "Mk - M = " + $(F(y.maintnanceMarginHeadroomNlvSide)), 1)
                         ])
                       ]),
-                      v("div", EQ, [
+                      v("div", FQ, [
                         p[31] || (p[31] = v("div", { class: "item-label" }, "Add'l GMV allowed", -1)),
-                        v("div", FQ, [
-                          v("span", QQ, "(Mk - M) / m = " + $(F(y.addlGmvAllowedNlvSide)), 1)
+                        v("div", QQ, [
+                          v("span", xQ, "(Mk - M) / m = " + $(F(y.addlGmvAllowedNlvSide)), 1)
                         ])
                       ])
                     ]),
-                    v("div", xQ, [
+                    v("div", UQ, [
                       p[37] || (p[37] = v("div", { class: "stage-header" }, "Stage-2 (drop d = 10%)", -1)),
-                      v("div", UQ, [
+                      v("div", HQ, [
                         p[33] || (p[33] = v("div", { class: "item-label" }, "Max GMV that survives start-reducing threshold", -1)),
-                        v("div", HQ, [
-                          v("span", _Q, "Gmax = NLV / [ 1 - (1 - d) x (1 - m) ] = " + $(F(y.maxGmvMaintenanceSide)), 1)
+                        v("div", _Q, [
+                          v("span", LQ, "Gmax = NLV / [ 1 - (1 - d) x (1 - m) ] = " + $(F(y.maxGmvMaintenanceSide)), 1)
                         ])
                       ]),
-                      v("div", LQ, [
+                      v("div", RQ, [
                         p[34] || (p[34] = v("div", { class: "item-label" }, "Max Maintenance margin (Before drop) to survive drop", -1)),
-                        v("div", RQ, [
-                          v("span", TQ, "Mk = Gmax x m = " + $(F(y.mkMaintenanceSide)), 1)
+                        v("div", TQ, [
+                          v("span", SQ, "Mk = Gmax x m = " + $(F(y.mkMaintenanceSide)), 1)
                         ])
                       ]),
-                      v("div", SQ, [
+                      v("div", MQ, [
                         p[35] || (p[35] = v("div", { class: "item-label" }, "Maintenance margin headroom", -1)),
-                        v("div", MQ, [
-                          v("span", IQ, "Mk - M = " + $(F(y.maintnanceMarginHeadroomMaintenanceSide)), 1)
+                        v("div", IQ, [
+                          v("span", kQ, "Mk - M = " + $(F(y.maintnanceMarginHeadroomMaintenanceSide)), 1)
                         ])
                       ]),
-                      v("div", kQ, [
+                      v("div", DQ, [
                         p[36] || (p[36] = v("div", { class: "item-label" }, "Add'l GMV allowed", -1)),
-                        v("div", DQ, [
-                          v("span", OQ, "(Mk - M) / m = " + $(F(y.addlGmvAllowedMaintenanceSide)), 1)
+                        v("div", OQ, [
+                          v("span", PQ, "(Mk - M) / m = " + $(F(y.addlGmvAllowedMaintenanceSide)), 1)
                         ])
                       ])
                     ])
@@ -24561,29 +24562,29 @@ const tF = {
                   class: ps(["context-menu-item", { active: y.active }]),
                   onClick: (Ve) => md(y.action)
                 }, [
-                  v("span", KQ, $(y.icon), 1),
+                  v("span", VQ, $(y.icon), 1),
                   v("span", null, $(y.label), 1),
-                  y.active ? (D(), O("span", VQ, "●")) : Ee("", !0)
-                ], 10, PQ))), 128)),
-                pa.value.length > 0 ? (D(), O("div", zQ)) : Ee("", !0),
-                v("div", NQ, [
+                  y.active ? (D(), O("span", zQ, "●")) : Ee("", !0)
+                ], 10, KQ))), 128)),
+                pa.value.length > 0 ? (D(), O("div", NQ)) : Ee("", !0),
+                v("div", GQ, [
                   p[38] || (p[38] = v("span", { class: "context-menu-label" }, "Fetched:", -1)),
-                  v("span", GQ, $(bd(ce.value.fetchedAt)) + " (PST) ", 1)
+                  v("span", WQ, $(bd(ce.value.fetchedAt)) + " (PST) ", 1)
                 ])
               ], 4)) : Ee("", !0)
             ])
           ])) : Ee("", !0)
         ]),
-        ss.value ? (D(), O("div", WQ, [
-          v("div", XQ, [
+        ss.value ? (D(), O("div", XQ, [
+          v("div", jQ, [
             p[39] || (p[39] = v("h3", null, "Rename Account", -1)),
             Ke(v("input", {
               "onUpdate:modelValue": p[7] || (p[7] = (y) => ns.value = y),
               placeholder: ya.value
-            }, null, 8, jQ), [
+            }, null, 8, JQ), [
               [$e, ns.value]
             ]),
-            v("div", JQ, [
+            v("div", YQ, [
               v("button", { onClick: Fd }, "Save"),
               v("button", {
                 onClick: p[8] || (p[8] = (y) => ss.value = !1)
@@ -24591,10 +24592,10 @@ const tF = {
             ])
           ])
         ])) : Ee("", !0),
-        rs.value ? (D(), O("div", YQ, [
-          v("div", ZQ, [
+        rs.value ? (D(), O("div", ZQ, [
+          v("div", $Q, [
             p[41] || (p[41] = v("h3", { class: "screenshots-title" }, "Past Screenshots", -1)),
-            Yn.value ? (D(), O("div", $Q, "Loading screenshots...")) : os.value.length === 0 ? (D(), O("div", qQ, "No screenshots yet.")) : (D(), O("div", ex, [
+            Yn.value ? (D(), O("div", qQ, "Loading screenshots...")) : os.value.length === 0 ? (D(), O("div", ex, "No screenshots yet.")) : (D(), O("div", tx, [
               (D(!0), O(St, null, oi(os.value, (y) => (D(), O("div", {
                 key: y.id,
                 class: "screenshot-list-item",
@@ -24604,9 +24605,9 @@ const tF = {
                   src: `data:image/png;base64,${y.image_data}`,
                   class: "screenshot-thumb",
                   alt: `Screenshot taken at ${new Date(y.created_at).toLocaleString()}`
-                }, null, 8, ix),
-                v("div", Ax, [
-                  y.name ? (D(), O("strong", sx, $(y.name), 1)) : (D(), O("span", nx, "(Unnamed)")),
+                }, null, 8, Ax),
+                v("div", sx, [
+                  y.name ? (D(), O("strong", nx, $(y.name), 1)) : (D(), O("span", rx, "(Unnamed)")),
                   v("span", null, [
                     bi($(new Date(y.created_at).toLocaleString("en-US", {
                       timeZone: "America/Los_Angeles",
@@ -24615,31 +24616,31 @@ const tF = {
                     })) + " ", 1),
                     p[40] || (p[40] = v("span", { style: { color: "#888", "font-size": "12px" } }, "PST", -1))
                   ]),
-                  v("div", rx, [
+                  v("div", ox, [
                     v("a", {
                       href: `data:image/png;base64,${y.image_data}`,
                       download: `positions-screenshot-${y.id}.png`,
                       class: "screenshot-download-link",
                       onClick: p[9] || (p[9] = rt(() => {
                       }, ["stop"]))
-                    }, "⬇️", 8, ox),
+                    }, "⬇️", 8, ax),
                     v("button", {
                       class: "screenshot-archive-btn",
                       onClick: rt((V) => Ud(y.id), ["stop"]),
                       title: "Archive screenshot",
                       style: { background: "none", border: "1px solid #e9ecef", padding: "4px 8px", "border-radius": "6px", cursor: "pointer" }
-                    }, " 🗄️ ", 8, ax),
+                    }, " 🗄️ ", 8, lx),
                     v("button", {
                       class: "screenshot-rename-btn",
                       onClick: rt((V) => _d(y), ["stop"]),
                       title: "Rename screenshot",
                       style: { background: "none", border: "1px solid #e9ecef", padding: "4px 8px", "border-radius": "6px", cursor: "pointer" }
-                    }, " ✏️ ", 8, lx)
+                    }, " ✏️ ", 8, hx)
                   ])
                 ])
-              ], 8, tx))), 128))
+              ], 8, ix))), 128))
             ])),
-            v("div", hx, [
+            v("div", cx, [
               v("button", {
                 onClick: p[10] || (p[10] = (y) => rs.value = !1),
                 class: "screenshots-close"
@@ -24651,12 +24652,12 @@ const tF = {
             class: "screenshot-preview-modal",
             onClick: p[12] || (p[12] = rt((y) => Tt.value = null, ["self"]))
           }, [
-            v("div", cx, [
+            v("div", ux, [
               v("img", {
                 src: `data:image/png;base64,${Tt.value.image_data}`,
                 class: "screenshot-full-img"
-              }, null, 8, ux),
-              v("div", dx, [
+              }, null, 8, dx),
+              v("div", fx, [
                 v("span", null, [
                   bi($(new Date(Tt.value.created_at).toLocaleString("en-US", {
                     timeZone: "America/Los_Angeles",
@@ -24669,7 +24670,7 @@ const tF = {
                   href: `data:image/png;base64,${Tt.value.image_data}`,
                   download: `positions-screenshot-${Tt.value.id}.png`,
                   class: "screenshot-download-link"
-                }, "⬇️ Download", 8, fx),
+                }, "⬇️ Download", 8, gx),
                 v("button", {
                   onClick: p[11] || (p[11] = (y) => Tt.value = null),
                   class: "screenshot-preview-close"
@@ -24678,8 +24679,8 @@ const tF = {
             ])
           ])) : Ee("", !0)
         ])) : Ee("", !0),
-        eA.value ? (D(), O("div", gx, [
-          v("div", px, [
+        eA.value ? (D(), O("div", px, [
+          v("div", mx, [
             p[43] || (p[43] = v("h3", null, "Name screenshot", -1)),
             Ke(v("input", {
               "onUpdate:modelValue": p[13] || (p[13] = (y) => tA.value = y),
@@ -24687,7 +24688,7 @@ const tF = {
             }, null, 512), [
               [$e, tA.value]
             ]),
-            v("div", mx, [
+            v("div", bx, [
               v("button", { onClick: xd }, "Save & Capture"),
               v("button", {
                 onClick: p[14] || (p[14] = (y) => eA.value = !1)
@@ -24695,7 +24696,7 @@ const tF = {
             ])
           ])
         ])) : Ee("", !0),
-        v("div", bx, [
+        v("div", wx, [
           ms(Xd, {
             name: "toast",
             tag: "div"
@@ -24706,24 +24707,24 @@ const tF = {
                 class: ps(["toast", `toast-${y.type}`]),
                 onClick: (V) => $n(y.id)
               }, [
-                v("div", Bx, [
-                  y.type === "success" ? (D(), O("span", vx, "✅")) : y.type === "error" ? (D(), O("span", Cx, "❌")) : y.type === "warning" ? (D(), O("span", yx, "⚠️")) : (D(), O("span", Ex, "ℹ️"))
+                v("div", vx, [
+                  y.type === "success" ? (D(), O("span", Cx, "✅")) : y.type === "error" ? (D(), O("span", yx, "❌")) : y.type === "warning" ? (D(), O("span", Ex, "⚠️")) : (D(), O("span", Fx, "ℹ️"))
                 ]),
-                v("div", Fx, [
-                  v("div", Qx, $(y.title), 1),
-                  y.message ? (D(), O("div", xx, $(y.message), 1)) : Ee("", !0)
+                v("div", Qx, [
+                  v("div", xx, $(y.title), 1),
+                  y.message ? (D(), O("div", Ux, $(y.message), 1)) : Ee("", !0)
                 ]),
                 v("button", {
                   class: "toast-close",
                   onClick: rt((V) => $n(y.id), ["stop"])
-                }, "×", 8, Ux)
-              ], 10, wx))), 128))
+                }, "×", 8, Hx)
+              ], 10, Bx))), 128))
             ]),
             _: 1
           })
         ]),
-        ls.value ? (D(), O("div", Hx, [
-          v("div", _x, [
+        ls.value ? (D(), O("div", _x, [
+          v("div", Lx, [
             p[44] || (p[44] = v("h3", null, "Rename Screenshot", -1)),
             Ke(v("input", {
               "onUpdate:modelValue": p[15] || (p[15] = (y) => hs.value = y),
@@ -24731,7 +24732,7 @@ const tF = {
             }, null, 512), [
               [$e, hs.value]
             ]),
-            v("div", Lx, [
+            v("div", Rx, [
               v("button", { onClick: Ld }, "Save"),
               v("button", {
                 onClick: p[16] || (p[16] = (y) => ls.value = !1)
@@ -24739,8 +24740,8 @@ const tF = {
             ])
           ])
         ])) : Ee("", !0),
-        ri.value ? (D(), O("div", Rx, [
-          v("div", Tx, [
+        ri.value ? (D(), O("div", Tx, [
+          v("div", Sx, [
             p[45] || (p[45] = v("h3", null, "Edit NLV & Maintenance Margin", -1)),
             p[46] || (p[46] = v("label", null, "NLV:", -1)),
             Ke(v("input", {
@@ -24756,7 +24757,7 @@ const tF = {
             }, null, 512), [
               [$e, fs.value]
             ]),
-            v("div", Sx, [
+            v("div", Mx, [
               v("button", { onClick: Md }, "Save"),
               v("button", {
                 onClick: p[19] || (p[19] = (y) => ri.value = null)
@@ -24767,8 +24768,8 @@ const tF = {
       ], 64);
     };
   }
-}), Gx = /* @__PURE__ */ ud(Mx, [["__scopeId", "data-v-d3aa0ff6"]]);
+}), Wx = /* @__PURE__ */ ud(Ix, [["__scopeId", "data-v-7c78ee0a"]]);
 export {
-  Gx as Summary,
-  Gx as default
+  Wx as Summary,
+  Wx as default
 };
