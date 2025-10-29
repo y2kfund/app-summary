@@ -11053,6 +11053,7 @@ var Tp = Sp;
 const Mp = Symbol.for("y2kfund.supabase"), Ip = {
   positions: (s, e) => ["positions", s, e],
   trades: (s) => ["trades", s],
+  cashTransactions: (s) => ["cashTransactions", s],
   nlvMargin: (s, e) => ["nlvMargin", s, e],
   thesis: () => ["thesis"],
   thesisConnections: () => ["thesisConnections"],
@@ -24393,7 +24394,7 @@ const bF = {
                   B("button", {
                     onClick: p[2] || (p[2] = (C) => i("minimize")),
                     class: "minimize-button",
-                    title: "Minimize Summary"
+                    title: "Close"
                   }, " X "),
                   tA.value ? (k(), D("div", {
                     key: 0,
@@ -24878,7 +24879,7 @@ const bF = {
       ], 64);
     };
   }
-}), pU = /* @__PURE__ */ Ed(rU, [["__scopeId", "data-v-e2099938"]]);
+}), pU = /* @__PURE__ */ Ed(rU, [["__scopeId", "data-v-9c891d3e"]]);
 export {
   pU as Summary,
   pU as default
