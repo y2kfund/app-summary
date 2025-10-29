@@ -118,13 +118,45 @@ function extractClientNumber(clientParam: string | null): number | null
   return match ? parseInt(match[1]) : null
 }
 
+const appName = ref('Summary')
+const showAppNameDialog = ref(false)
+const appNameInput = ref('')
+
+function parseAppNameFromUrl(): string {
+  const url = new URL(window.location.href)
+  return url.searchParams.get('summary_app_name') || 'Summary'
+}
+
+function writeAppNameToUrl(name: string) {
+  const url = new URL(window.location.href)
+  if (name && name.trim() && name !== 'Summary') {
+    url.searchParams.set('summary_app_name', name.trim())
+  } else {
+    url.searchParams.delete('summary_app_name')
+  }
+  window.history.replaceState({}, '', url.toString())
+}
+
+function openAppNameDialog() {
+  appNameInput.value = appName.value
+  showAppNameDialog.value = true
+}
+
+function saveAppName() {
+  appName.value = appNameInput.value.trim() || 'Summary'
+  writeAppNameToUrl(appName.value)
+  showAppNameDialog.value = false
+}
+
 // Watch for URL changes
 onMounted(() => {
   selectedClientFromUrl.value = getUrlParams()
+  appName.value = parseAppNameFromUrl()
   
   // Listen for popstate events (browser back/forward)
   window.addEventListener('popstate', () => {
     selectedClientFromUrl.value = getUrlParams()
+    appName.value = parseAppNameFromUrl()
   })
 })
 
@@ -1752,8 +1784,14 @@ watch(filteredMetrics, (newVal) => {
       <div class="metric-block">
         <div class="block-header">
           <h2>
-            <router-link v-if="showHeaderLink" to="/summary" class="summary-link">Summary</router-link>
-            <span v-else>Summary</span>
+            <router-link v-if="showHeaderLink" to="/summary" class="summary-link">{{ appName }}</router-link>
+            <span v-else>{{ appName }}</span>
+            <button
+              class="appname-rename-btn"
+              @click="openAppNameDialog"
+              title="Rename app"
+              style="width:auto;padding: 2px 7px; font-size: 13px; background: none; border: none; color: #888; cursor: pointer;"
+            >✎</button>
           </h2>
           <div class="header-tools">
             <button class="btn" @click="showArchivedClients = !showArchivedClients" :title="showArchivedClients ? `Hide archived clients` : `Show archived clients`">
@@ -2205,6 +2243,17 @@ watch(filteredMetrics, (newVal) => {
       <div class="dialog-actions">
         <button @click="saveManualEdit">Save</button>
         <button @click="editingAccountId = null">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div v-if="showAppNameDialog" class="rename-dialog-backdrop">
+    <div class="rename-dialog">
+      <h3>Rename App</h3>
+      <input v-model="appNameInput" placeholder="App name" />
+      <div class="dialog-actions">
+        <button @click="saveAppName">Save</button>
+        <button @click="showAppNameDialog = false">Cancel</button>
       </div>
     </div>
   </div>
