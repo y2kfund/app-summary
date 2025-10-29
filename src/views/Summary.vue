@@ -153,6 +153,7 @@ function saveAppName() {
 onMounted(() => {
   selectedClientFromUrl.value = getUrlParams()
   appName.value = parseAppNameFromUrl()
+  summaryColumnRenames.value = parseSummaryColumnRenamesFromUrl()
   
   // Listen for popstate events (browser back/forward)
   window.addEventListener('popstate', () => {
@@ -422,6 +423,47 @@ function showAllAccounts() {
   });
 }
 
+// ...existing code...
+type SummaryColumnRenames = Partial<Record<SummaryColumnField, string>>
+const summaryColumnRenames = ref<SummaryColumnRenames>({})
+
+// Helpers for URL sync
+function parseSummaryColumnRenamesFromUrl(): SummaryColumnRenames {
+  const url = new URL(window.location.href)
+  const param = url.searchParams.get(`${props.window}_summary_col_renames`)
+  if (!param) return {}
+  try {
+    const pairs = param.split('-and-')
+    const renames: SummaryColumnRenames = {}
+    pairs.forEach(pair => {
+      const [field, ...rest] = pair.split(':')
+      if (field && rest.length) {
+        renames[field as SummaryColumnField] = decodeURIComponent(rest.join(':'))
+      }
+    })
+    return renames
+  } catch {
+    return {}
+  }
+}
+function writeSummaryColumnRenamesToUrl(renames: SummaryColumnRenames) {
+  const url = new URL(window.location.href)
+  const pairs = Object.entries(renames)
+    .filter(([_, name]) => name && name.trim())
+    .map(([field, name]) => `${field}:${encodeURIComponent(name)}`)
+    .join('-and-')
+  if (pairs) {
+    url.searchParams.set(`${props.window}_summary_col_renames`, pairs)
+  } else {
+    url.searchParams.delete(`${props.window}_summary_col_renames`)
+  }
+  window.history.replaceState({}, '', url.toString())
+}
+watch(summaryColumnRenames, (renames) => {
+  writeSummaryColumnRenamesToUrl(renames)
+  nextTick(() => initializeTabulator())
+}, { deep: true })
+
 // Add column visibility management after the existing reactive variables
 type SummaryColumnField = 'account' | 'nlv_val' | 'maintenance_val' | 'excess_maintenance_margin' | 'addlGmvAllowedNlvSide' | 'addlGmvAllowedMaintenanceSide'
 
@@ -430,8 +472,8 @@ const allSummaryColumnOptions: Array<{ field: SummaryColumnField; label: string 
   { field: 'nlv_val', label: 'NLV' },
   { field: 'maintenance_val', label: 'Maintenance Margin' },
   { field: 'excess_maintenance_margin', label: 'Excess Maintenance Margin' }, // Add this line
-  { field: 'addlGmvAllowedNlvSide', label: "Add'l GMV to stop-adding threshold" },
-  { field: 'addlGmvAllowedMaintenanceSide', label: "Add'l GMV to start-reducing threshold" }
+  { field: 'addlGmvAllowedNlvSide', label: "Stop-adding threshold (Add'l GMV)" },
+  { field: 'addlGmvAllowedMaintenanceSide', label: "Start-reducing threshold (Add'l GMV)" }
 ]
 
 // URL param helpers for column visibility
@@ -493,6 +535,34 @@ watch(summaryVisibleCols, (cols) => {
   })
 }, { deep: true })
 
+const showColRenameDialog = ref(false)
+const colRenameField = ref<SummaryColumnField | null>(null)
+const colRenameValue = ref('')
+
+function openColRenameDialog(field: SummaryColumnField, current: string) {
+  colRenameField.value = field
+  colRenameValue.value = current
+  showColRenameDialog.value = true
+}
+function saveColRename() {
+  if (colRenameField.value) {
+    summaryColumnRenames.value = {
+      ...summaryColumnRenames.value,
+      [colRenameField.value]: colRenameValue.value.trim()
+    }
+    showColRenameDialog.value = false
+    nextTick(() => initializeTabulator())
+  }
+}
+function cancelColRename() {
+  showColRenameDialog.value = false
+}
+
+function getSummaryColLabel(field: SummaryColumnField) {
+  const opt = allSummaryColumnOptions.find(c => c.field === field)
+  return summaryColumnRenames.value[field] || (opt?.label ?? field)
+}
+
 // 3. ADD Tabulator initialization function (REPLACE onGridReady)
 function initializeTabulator() {
   if (!tableDiv.value) return
@@ -504,7 +574,7 @@ function initializeTabulator() {
 
   const columns = [
     {
-      title: 'Account',
+      title: getSummaryColLabel('account'),
       field: 'account',
       frozen: true,
       headerSort: false,
@@ -532,7 +602,7 @@ function initializeTabulator() {
       },
       titleFormatter: (cell: any) => {
         return `<div class="header-with-close">
-          <span>Account</span>
+          <span>${getSummaryColLabel('account')}</span>
         </div>`
       },
       cellClick: (e: any, cell: any) => {
@@ -545,7 +615,7 @@ function initializeTabulator() {
       }
     },
     {
-      title: 'NLV',
+      title: getSummaryColLabel('nlv_val'),
       field: 'nlv_val',
       hozAlign: 'right',
       width: summaryColumnWidths.value['nlv_val'] || undefined, // Apply saved width
@@ -561,7 +631,7 @@ function initializeTabulator() {
       },
       titleFormatter: (cell: any) => {
         return `<div class="header-with-close">
-          <span>NLV</span>
+          <span>${getSummaryColLabel('nlv_val')}</span>
           <button class="header-close-btn" data-field="nlv_val" title="Hide column">✕</button>
         </div>`
       },
@@ -569,7 +639,7 @@ function initializeTabulator() {
       bottomCalcFormatter: (cell: any) => formatCurrency(cell.getValue())
     },
     {
-      title: 'Maintenance Margin',
+      title: getSummaryColLabel('maintenance_val'),
       field: 'maintenance_val',
       hozAlign: 'right',
       width: summaryColumnWidths.value['maintenance_val'] || undefined, // Apply saved width
@@ -586,7 +656,7 @@ function initializeTabulator() {
       },
       titleFormatter: (cell: any) => {
         return `<div class="header-with-close">
-          <span>Maintenance Margin</span>
+          <span>${getSummaryColLabel('maintenance_val')}</span>
           <button class="header-close-btn" data-field="maintenance_val" title="Hide column">✕</button>
         </div>`
       },
@@ -597,7 +667,7 @@ function initializeTabulator() {
       }
     },
     {
-      title: 'Excess Maintenance Margin',
+      title: getSummaryColLabel('excess_maintenance_margin'),
       field: 'excess_maintenance_margin',
       hozAlign: 'right',
       width: summaryColumnWidths.value['excess_maintenance_margin'] || undefined, // Apply saved width
@@ -609,7 +679,7 @@ function initializeTabulator() {
       },
       titleFormatter: (cell: any) => {
         return `<div class="header-with-close">
-          <span>Excess Maintenance Margin</span>
+          <span>${getSummaryColLabel('excess_maintenance_margin')}</span>
           <button class="header-close-btn" data-field="excess_maintenance_margin" title="Hide column">✕</button>
         </div>`
       },
@@ -617,7 +687,7 @@ function initializeTabulator() {
       bottomCalcFormatter: (cell: any) => formatCurrency(cell.getValue())
     },
     {
-      title: "Stop-adding threshold (Add'l GMV)",
+      title: getSummaryColLabel("addlGmvAllowedNlvSide"),
       field: 'addlGmvAllowedNlvSide',
       hozAlign: 'right',
       width: summaryColumnWidths.value['addlGmvAllowedNlvSide'] || undefined, // Apply saved width
@@ -629,7 +699,7 @@ function initializeTabulator() {
       },
       titleFormatter: (cell: any) => {
         return `<div class="header-with-close">
-          <span>Stop-adding threshold (Add'l GMV)</span>
+          <span>${getSummaryColLabel('addlGmvAllowedNlvSide')}</span>
           <button class="header-close-btn" data-field="addlGmvAllowedNlvSide" title="Hide column">✕</button>
         </div>`
       },
@@ -637,7 +707,7 @@ function initializeTabulator() {
       bottomCalcFormatter: (cell: any) => formatCurrency(cell.getValue())
     },
     {
-      title: "Start-reducing threshold (Add'l GMV)",
+      title: getSummaryColLabel("addlGmvAllowedMaintenanceSide"),
       field: 'addlGmvAllowedMaintenanceSide',
       hozAlign: 'right',
       width: summaryColumnWidths.value['addlGmvAllowedMaintenanceSide'] || undefined, // Apply saved width
@@ -649,7 +719,7 @@ function initializeTabulator() {
       },
       titleFormatter: (cell: any) => {
         return `<div class="header-with-close">
-          <span>Start-reducing threshold (Add'l GMV)</span>
+          <span>${getSummaryColLabel('addlGmvAllowedMaintenanceSide')}</span>
           <button class="header-close-btn" data-field="addlGmvAllowedMaintenanceSide" title="Hide column">✕</button>
         </div>`
       },
@@ -1839,7 +1909,19 @@ watch(filteredMetrics, (newVal) => {
                     v-model="summaryVisibleCols"
                     class="column-checkbox"
                   />
-                  <span class="column-label">{{ opt.label }}</span>
+                  <span class="column-label">
+                    {{ summaryColumnRenames[opt.field] || opt.label }}
+                    <span v-if="summaryColumnRenames[opt.field]" style="font-size: 11px; color: #888; font-style: italic; display: inline-block;">
+                      ({{ opt.label }})
+                    </span>
+                  </span>
+                  <button
+                    class="col-rename-btn"
+                    type="button"
+                    @click.stop="openColRenameDialog(opt.field, summaryColumnRenames[opt.field] || opt.label)"
+                    title="Rename column"
+                    style="margin-left: 6px; font-size: 13px; background: none; border: none; color: #888; cursor: pointer;"
+                  >✎</button>
                 </label>
               </div>
               <div class="columns-footer">
@@ -2255,6 +2337,17 @@ watch(filteredMetrics, (newVal) => {
       <div class="dialog-actions">
         <button @click="saveAppName">Save</button>
         <button @click="showAppNameDialog = false">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div v-if="showColRenameDialog" class="rename-dialog-backdrop">
+    <div class="rename-dialog">
+      <h3>Rename Column</h3>
+      <input v-model="colRenameValue" placeholder="Column name" />
+      <div class="dialog-actions">
+        <button @click="saveColRename">Save</button>
+        <button @click="cancelColRename">Cancel</button>
       </div>
     </div>
   </div>
