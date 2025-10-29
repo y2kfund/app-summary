@@ -1893,7 +1893,7 @@ watch(filteredMetrics, (newVal) => {
               class="minimize-button"
               title="Minimize Summary"
             >
-              −
+              X
             </button>
             
             <!-- Updated Column selector popup to match Positions design -->

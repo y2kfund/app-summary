@@ -24394,7 +24394,7 @@ const bF = {
                     onClick: p[2] || (p[2] = (C) => i("minimize")),
                     class: "minimize-button",
                     title: "Minimize Summary"
-                  }, " − "),
+                  }, " X "),
                   tA.value ? (k(), D("div", {
                     key: 0,
                     ref_key: "summaryColumnsPopupRef",
@@ -24878,7 +24878,7 @@ const bF = {
       ], 64);
     };
   }
-}), pU = /* @__PURE__ */ Ed(rU, [["__scopeId", "data-v-4af905e9"]]);
+}), pU = /* @__PURE__ */ Ed(rU, [["__scopeId", "data-v-e2099938"]]);
 export {
   pU as Summary,
   pU as default
