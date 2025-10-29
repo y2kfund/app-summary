@@ -1891,7 +1891,7 @@ watch(filteredMetrics, (newVal) => {
             <button 
               @click="emit('minimize')"
               class="minimize-button"
-              title="Minimize Summary"
+              title="Close"
             >
               X
             </button>
