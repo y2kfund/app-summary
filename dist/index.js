@@ -23344,7 +23344,8 @@ const aF = {
   __name: "Summary",
   props: {
     showHeaderLink: { type: Boolean, default: !1 },
-    userId: { default: null }
+    userId: { default: null },
+    window: { default: null }
   },
   emits: ["minimize"],
   setup(s, { emit: e }) {
@@ -23373,7 +23374,7 @@ const aF = {
     }), d = G([]);
     let f = 0;
     function g() {
-      return new URLSearchParams(window.location.search).get("all_cts_clientId");
+      return new URLSearchParams(window.location.search).get(`${t.window}_all_cts_clientId`);
     }
     function b(w) {
       if (!w) return null;
@@ -23382,11 +23383,11 @@ const aF = {
     }
     const m = G("Summary"), v = G(!1), Q = G("");
     function x() {
-      return new URL(window.location.href).searchParams.get("summary_app_name") || "Summary";
+      return new URL(window.location.href).searchParams.get(`${t.window}_summary_app_name`) || "Summary";
     }
     function y(w) {
       const p = new URL(window.location.href);
-      w && w.trim() && w !== "Summary" ? p.searchParams.set("summary_app_name", w.trim()) : p.searchParams.delete("summary_app_name"), window.history.replaceState({}, "", p.toString());
+      w && w.trim() && w !== "Summary" ? p.searchParams.set(`${t.window}_summary_app_name`, w.trim()) : p.searchParams.delete(`${t.window}_summary_app_name`), window.history.replaceState({}, "", p.toString());
     }
     function E() {
       Q.value = m.value, v.value = !0;
@@ -23509,7 +23510,7 @@ const aF = {
       { field: "addlGmvAllowedMaintenanceSide", label: "Add'l GMV to start-reducing threshold" }
     ];
     function He() {
-      const p = new URL(window.location.href).searchParams.get("summary_cols");
+      const p = new URL(window.location.href).searchParams.get(`${t.window}_summary_cols`);
       if (!p)
         return de.map((C) => C.field);
       const F = p.split("-and-").map((C) => C.trim()).filter(Boolean), R = new Set(de.map((C) => C.field)), I = F.filter((C) => R.has(C));
@@ -23517,7 +23518,7 @@ const aF = {
     }
     function Be(w) {
       const p = new URL(window.location.href);
-      p.searchParams.set("summary_cols", w.join("-and-")), window.history.replaceState({}, "", p.toString());
+      p.searchParams.set(`${t.window}_summary_cols`, w.join("-and-")), window.history.replaceState({}, "", p.toString());
     }
     const ne = G(He()), be = G(!1), bt = G(null), Jn = G(null);
     function bd() {
@@ -23734,7 +23735,7 @@ const aF = {
         { field: "account", type: "=", value: String(w) }
       ]), qi();
       const p = new URL(window.location.href);
-      p.searchParams.set("all_cts_clientId", String(w)), window.history.replaceState({}, "", p.toString()), he && he.emit("account-filter-changed", {
+      p.searchParams.set(`${t.window}_all_cts_clientId`, String(w)), window.history.replaceState({}, "", p.toString()), he && he.emit("account-filter-changed", {
         accountId: String(w),
         source: "summary"
       });
@@ -23744,7 +23745,7 @@ const aF = {
       const p = n.getFilters().some((R) => R.field === w);
       n.clearFilter(), qi();
       const F = new URL(window.location.href);
-      F.searchParams.delete("all_cts_clientId"), window.history.replaceState({}, "", F.toString()), c.value = null, p && he && he.emit("account-filter-changed", {
+      F.searchParams.delete(`${t.window}_all_cts_clientId`), window.history.replaceState({}, "", F.toString()), c.value = null, p && he && he.emit("account-filter-changed", {
         accountId: null,
         source: "summary"
       }), kt(() => {
@@ -23756,7 +23757,7 @@ const aF = {
       const w = n.getFilters().some((F) => F.field === "account");
       n.clearFilter(), qi();
       const p = new URL(window.location.href);
-      p.searchParams.delete("all_cts_clientId"), window.history.replaceState({}, "", p.toString()), w && he && he.emit("account-filter-changed", {
+      p.searchParams.delete(`${t.window}_all_cts_clientId`), window.history.replaceState({}, "", p.toString()), w && he && he.emit("account-filter-changed", {
         accountId: null,
         source: "summary"
       });
@@ -24068,7 +24069,7 @@ const aF = {
       p !== -1 && d.value.splice(p, 1);
     }
     function Hd() {
-      const p = new URL(window.location.href).searchParams.get("summary_col_widths");
+      const p = new URL(window.location.href).searchParams.get(`${t.window}_summary_col_widths`);
       if (!p) return {};
       try {
         const F = p.split("-and-"), R = {};
@@ -24082,7 +24083,7 @@ const aF = {
     }
     function _d(w) {
       const p = new URL(window.location.href), F = Object.entries(w).filter(([R, I]) => I > 0).map(([R, I]) => `${R}:${I}`).join("-and-");
-      F ? p.searchParams.set("summary_col_widths", F) : p.searchParams.delete("summary_col_widths"), window.history.replaceState({}, "", p.toString());
+      F ? p.searchParams.set(`${t.window}_summary_col_widths`, F) : p.searchParams.delete(`${t.window}_summary_col_widths`), window.history.replaceState({}, "", p.toString());
     }
     const Rt = G(Hd()), rs = G(!1), $n = G(null), Ua = G(""), os = G("");
     function Ld(w, p) {
@@ -24808,7 +24809,7 @@ const aF = {
       ], 64);
     };
   }
-}), iU = /* @__PURE__ */ md(Wx, [["__scopeId", "data-v-fc4144af"]]);
+}), iU = /* @__PURE__ */ md(Wx, [["__scopeId", "data-v-a564f29f"]]);
 export {
   iU as Summary,
   iU as default

@@ -40,7 +40,8 @@ ChartJS.register(
 
 const props = withDefaults(defineProps<SummaryProps>(), {
   showHeaderLink: false,
-  userId: null
+  userId: null,
+  window: null
   //userId: "67e578fd-2cf7-48a4-b028-a11a3f89bb9b"
 })
 
@@ -107,7 +108,7 @@ const DOCKER_CONTROL_URL = 'https://ibkr-docker-manage.aiworkspace.pro/docker_co
 // Function to get URL parameters
 function getUrlParams() {
   const urlParams = new URLSearchParams(window.location.search)
-  return urlParams.get('all_cts_clientId')
+  return urlParams.get(`${props.window}_all_cts_clientId`)
 }
 
 // Function to extract client number from URL parameter
@@ -124,15 +125,15 @@ const appNameInput = ref('')
 
 function parseAppNameFromUrl(): string {
   const url = new URL(window.location.href)
-  return url.searchParams.get('summary_app_name') || 'Summary'
+  return url.searchParams.get(`${props.window}_summary_app_name`) || 'Summary'
 }
 
 function writeAppNameToUrl(name: string) {
   const url = new URL(window.location.href)
   if (name && name.trim() && name !== 'Summary') {
-    url.searchParams.set('summary_app_name', name.trim())
+    url.searchParams.set(`${props.window}_summary_app_name`, name.trim())
   } else {
-    url.searchParams.delete('summary_app_name')
+    url.searchParams.delete(`${props.window}_summary_app_name`)
   }
   window.history.replaceState({}, '', url.toString())
 }
@@ -395,7 +396,7 @@ function updateClientInRoute(userAccountId: number) {
   const clientNumber = clientIndex + 1;
   
   const url = new URL(window.location.href);
-  url.searchParams.set('all_cts_clientId', 'Client ' + clientNumber.toString());
+  url.searchParams.set(`${props.window}_all_cts_clientId`, 'Client ' + clientNumber.toString());
   window.history.replaceState({}, '', url.toString());
   
   // Update the local state
@@ -409,7 +410,7 @@ function updateClientInRoute(userAccountId: number) {
 
 function showAllAccounts() {
   const url = new URL(window.location.href);
-  url.searchParams.delete('all_cts_clientId');
+  url.searchParams.delete(`${props.window}_all_cts_clientId`);
   window.history.replaceState({}, '', url.toString());
   
   // Update the local state
@@ -436,7 +437,7 @@ const allSummaryColumnOptions: Array<{ field: SummaryColumnField; label: string 
 // URL param helpers for column visibility
 function parseSummaryVisibleColsFromUrl(): SummaryColumnField[] {
   const url = new URL(window.location.href)
-  const colsParam = url.searchParams.get('summary_cols')
+  const colsParam = url.searchParams.get(`${props.window}_summary_cols`)
   if (!colsParam) {
     return allSummaryColumnOptions.map(c => c.field)
   }
@@ -448,7 +449,7 @@ function parseSummaryVisibleColsFromUrl(): SummaryColumnField[] {
 
 function writeSummaryVisibleColsToUrl(cols: SummaryColumnField[]) {
   const url = new URL(window.location.href)
-  url.searchParams.set('summary_cols', cols.join('-and-'))
+  url.searchParams.set(`${props.window}_summary_cols`, cols.join('-and-'))
   window.history.replaceState({}, '', url.toString())
 }
 
@@ -807,7 +808,7 @@ function handleSummaryAccountCellFilterClick(value: any) {
   syncActiveSummaryFiltersFromGrid()
   
   const url = new URL(window.location.href)
-  url.searchParams.set('all_cts_clientId', String(value))
+  url.searchParams.set(`${props.window}_all_cts_clientId` , String(value))
   window.history.replaceState({}, '', url.toString())
   
   if (eventBus) {
@@ -831,7 +832,7 @@ function clearSummaryFilter(field: 'account') {
   
   // Clear the URL parameter
   const url = new URL(window.location.href)
-  url.searchParams.delete('all_cts_clientId')
+  url.searchParams.delete(`${props.window}_all_cts_clientId`)
   window.history.replaceState({}, '', url.toString())
   
   // Clear the local state
@@ -863,7 +864,7 @@ function clearAllSummaryFilters() {
   syncActiveSummaryFiltersFromGrid()
   
   const url = new URL(window.location.href)
-  url.searchParams.delete('all_cts_clientId')
+  url.searchParams.delete(`${props.window}_all_cts_clientId`)
   window.history.replaceState({}, '', url.toString())
   
   if (hadAccountFilter && eventBus) {
@@ -1415,7 +1416,7 @@ function removeNotification(id: number) {
 // Add URL parameter helpers for column widths
 function parseSummaryColumnWidthsFromUrl(): Record<string, number> {
   const url = new URL(window.location.href)
-  const widthsParam = url.searchParams.get('summary_col_widths')
+  const widthsParam = url.searchParams.get(`${props.window}_summary_col_widths`)
   if (!widthsParam) return {}
   
   try {
@@ -1442,9 +1443,9 @@ function writeSummaryColumnWidthsToUrl(widths: Record<string, number>) {
     .join('-and-')
   
   if (widthPairs) {
-    url.searchParams.set('summary_col_widths', widthPairs)
+    url.searchParams.set(`${props.window}_summary_col_widths`, widthPairs)
   } else {
-    url.searchParams.delete('summary_col_widths')
+    url.searchParams.delete(`${props.window}_summary_col_widths`)
   }
   window.history.replaceState({}, '', url.toString())
 }

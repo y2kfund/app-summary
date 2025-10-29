@@ -4,4 +4,5 @@ export default Summary;
 export interface SummaryProps {
     showHeaderLink?: boolean;
     userId?: string | null;
+    window?: string | null;
 }
