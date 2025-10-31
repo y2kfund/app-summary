@@ -23354,7 +23354,7 @@ const bF = {
     userId: { default: null },
     window: { default: null }
   },
-  emits: ["minimize"],
+  emits: ["minimize", "maximize"],
   setup(s, { emit: e }) {
     Vn.register(
       Ro,
@@ -24316,12 +24316,12 @@ const bF = {
           ], 2))), 128))
         ]),
         B("div", VF, [
-          Ot(o).isLoading.value ? (k(), D("div", zF, [...p[23] || (p[23] = [
+          Ot(o).isLoading.value ? (k(), D("div", zF, [...p[24] || (p[24] = [
             B("div", { class: "loading-spinner" }, null, -1),
             B("p", null, "Loading the latest metrics...", -1)
           ])])) : Ot(o).isError.value ? (k(), D("div", NF, [
-            p[24] || (p[24] = B("h2", null, "Error Loading Data", -1)),
-            p[25] || (p[25] = B("p", null, "An error occurred while fetching the metrics:", -1)),
+            p[25] || (p[25] = B("h2", null, "Error Loading Data", -1)),
+            p[26] || (p[26] = B("p", null, "An error occurred while fetching the metrics:", -1)),
             B("pre", null, J(Ot(o).error.value), 1)
           ])) : Ot(o).isSuccess.value ? (k(), D("div", GF, [
             B("div", WF, [
@@ -24377,7 +24377,7 @@ const bF = {
                     "aria-label": "Column settings",
                     onClick: qe(Fd, ["stop"]),
                     title: "Column Settings"
-                  }, [...p[26] || (p[26] = [
+                  }, [...p[27] || (p[27] = [
                     B("svg", {
                       class: "icon",
                       viewBox: "0 0 24 24",
@@ -24392,7 +24392,12 @@ const bF = {
                     ], -1)
                   ])], 512),
                   B("button", {
-                    onClick: p[2] || (p[2] = (C) => i("minimize")),
+                    onClick: p[2] || (p[2] = (C) => i("maximize")),
+                    class: "maximize-button",
+                    title: "Maximize"
+                  }, " ⤢ "),
+                  B("button", {
+                    onClick: p[3] || (p[3] = (C) => i("minimize")),
                     class: "minimize-button",
                     title: "Close"
                   }, " X "),
@@ -24401,10 +24406,10 @@ const bF = {
                     ref_key: "summaryColumnsPopupRef",
                     ref: tr,
                     class: "columns-dropdown",
-                    onClick: p[5] || (p[5] = qe(() => {
+                    onClick: p[6] || (p[6] = qe(() => {
                     }, ["stop"]))
                   }, [
-                    p[27] || (p[27] = B("div", { class: "columns-header" }, [
+                    p[28] || (p[28] = B("div", { class: "columns-header" }, [
                       B("span", { class: "columns-title" }, "Columns")
                     ], -1)),
                     B("div", iQ, [
@@ -24415,7 +24420,7 @@ const bF = {
                         He(B("input", {
                           type: "checkbox",
                           value: C.field,
-                          "onUpdate:modelValue": p[3] || (p[3] = (z) => ut.value = z),
+                          "onUpdate:modelValue": p[4] || (p[4] = (z) => ut.value = z),
                           class: "column-checkbox"
                         }, null, 8, AQ), [
                           [lf, ut.value]
@@ -24436,7 +24441,7 @@ const bF = {
                     B("div", oQ, [
                       B("button", {
                         class: "btn-link",
-                        onClick: p[4] || (p[4] = (C) => ut.value = ce.map((z) => z.field))
+                        onClick: p[5] || (p[5] = (C) => ut.value = ce.map((z) => z.field))
                       }, " Show All "),
                       B("button", {
                         class: "btn-done",
@@ -24452,7 +24457,7 @@ const bF = {
                 ])
               ]),
               as.value.length ? (k(), D("div", aQ, [
-                p[28] || (p[28] = B("span", { class: "filters-label" }, "Filtered by:", -1)),
+                p[29] || (p[29] = B("span", { class: "filters-label" }, "Filtered by:", -1)),
                 B("div", lQ, [
                   (k(!0), D(Dt, null, ci(as.value, (C) => (k(), D("span", {
                     key: `${C.field}-${C.value}`,
@@ -24513,7 +24518,7 @@ const bF = {
                         const fe = typeof Z.nlv_internal_account_id == "string" ? parseInt(Z.nlv_internal_account_id) : Z.nlv_internal_account_id, ue = typeof C.nlv_internal_account_id == "string" ? parseInt(C.nlv_internal_account_id) : C.nlv_internal_account_id;
                         return fe === ue;
                       })) + 1}`) + ": ", 1),
-                      p[29] || (p[29] = B("div", null, "Assumptions: maintenance margin (m) = 30%", -1))
+                      p[30] || (p[30] = B("div", null, "Assumptions: maintenance margin (m) = 30%", -1))
                     ]),
                     B("div", FQ, [
                       B("div", QQ, [
@@ -24573,54 +24578,54 @@ const bF = {
                   ]),
                   B("div", SQ, [
                     B("div", TQ, [
-                      p[34] || (p[34] = B("div", { class: "stage-header" }, "Stage-1 (drop d = 15%)", -1)),
+                      p[35] || (p[35] = B("div", { class: "stage-header" }, "Stage-1 (drop d = 15%)", -1)),
                       B("div", MQ, [
-                        p[30] || (p[30] = B("div", { class: "item-label" }, "Max GMV that survives stop-adding threshold", -1)),
+                        p[31] || (p[31] = B("div", { class: "item-label" }, "Max GMV that survives stop-adding threshold", -1)),
                         B("div", IQ, [
                           B("span", kQ, "Gmax = NLV / [ 1 - (1 - d) x (1 - m) ] = " + J(K(C.maxGmvNlvSide)), 1)
                         ])
                       ]),
                       B("div", DQ, [
-                        p[31] || (p[31] = B("div", { class: "item-label" }, "Max Maintenance margin (Before drop) to survive drop", -1)),
+                        p[32] || (p[32] = B("div", { class: "item-label" }, "Max Maintenance margin (Before drop) to survive drop", -1)),
                         B("div", OQ, [
                           B("span", PQ, "Mk = Gmax x m = " + J(K(C.mkNlvSide)), 1)
                         ])
                       ]),
                       B("div", KQ, [
-                        p[32] || (p[32] = B("div", { class: "item-label" }, "Maintenance margin headroom", -1)),
+                        p[33] || (p[33] = B("div", { class: "item-label" }, "Maintenance margin headroom", -1)),
                         B("div", VQ, [
                           B("span", zQ, "Mk - M = " + J(K(C.maintnanceMarginHeadroomNlvSide)), 1)
                         ])
                       ]),
                       B("div", NQ, [
-                        p[33] || (p[33] = B("div", { class: "item-label" }, "Add'l GMV allowed", -1)),
+                        p[34] || (p[34] = B("div", { class: "item-label" }, "Add'l GMV allowed", -1)),
                         B("div", GQ, [
                           B("span", WQ, "(Mk - M) / m = " + J(K(C.addlGmvAllowedNlvSide)), 1)
                         ])
                       ])
                     ]),
                     B("div", XQ, [
-                      p[39] || (p[39] = B("div", { class: "stage-header" }, "Stage-2 (drop d = 10%)", -1)),
+                      p[40] || (p[40] = B("div", { class: "stage-header" }, "Stage-2 (drop d = 10%)", -1)),
                       B("div", jQ, [
-                        p[35] || (p[35] = B("div", { class: "item-label" }, "Max GMV that survives start-reducing threshold", -1)),
+                        p[36] || (p[36] = B("div", { class: "item-label" }, "Max GMV that survives start-reducing threshold", -1)),
                         B("div", JQ, [
                           B("span", YQ, "Gmax = NLV / [ 1 - (1 - d) x (1 - m) ] = " + J(K(C.maxGmvMaintenanceSide)), 1)
                         ])
                       ]),
                       B("div", $Q, [
-                        p[36] || (p[36] = B("div", { class: "item-label" }, "Max Maintenance margin (Before drop) to survive drop", -1)),
+                        p[37] || (p[37] = B("div", { class: "item-label" }, "Max Maintenance margin (Before drop) to survive drop", -1)),
                         B("div", ZQ, [
                           B("span", qQ, "Mk = Gmax x m = " + J(K(C.mkMaintenanceSide)), 1)
                         ])
                       ]),
                       B("div", ex, [
-                        p[37] || (p[37] = B("div", { class: "item-label" }, "Maintenance margin headroom", -1)),
+                        p[38] || (p[38] = B("div", { class: "item-label" }, "Maintenance margin headroom", -1)),
                         B("div", tx, [
                           B("span", ix, "Mk - M = " + J(K(C.maintnanceMarginHeadroomMaintenanceSide)), 1)
                         ])
                       ]),
                       B("div", Ax, [
-                        p[38] || (p[38] = B("div", { class: "item-label" }, "Add'l GMV allowed", -1)),
+                        p[39] || (p[39] = B("div", { class: "item-label" }, "Add'l GMV allowed", -1)),
                         B("div", sx, [
                           B("span", nx, "(Mk - M) / m = " + J(K(C.addlGmvAllowedMaintenanceSide)), 1)
                         ])
@@ -24633,7 +24638,7 @@ const bF = {
                 key: 3,
                 class: "context-menu",
                 style: hf({ left: de.value.x + "px", top: de.value.y + "px" }),
-                onClick: p[6] || (p[6] = qe(() => {
+                onClick: p[7] || (p[7] = qe(() => {
                 }, ["stop"]))
               }, [
                 (k(!0), D(Dt, null, ci(Ua.value, (C, z) => (k(), D("div", {
@@ -24647,7 +24652,7 @@ const bF = {
                 ], 10, rx))), 128)),
                 Ua.value.length > 0 ? (k(), D("div", lx)) : pe("", !0),
                 B("div", hx, [
-                  p[40] || (p[40] = B("span", { class: "context-menu-label" }, "Fetched:", -1)),
+                  p[41] || (p[41] = B("span", { class: "context-menu-label" }, "Fetched:", -1)),
                   B("span", cx, J(Md(de.value.fetchedAt)) + " (PST) ", 1)
                 ])
               ], 4)) : pe("", !0)
@@ -24656,9 +24661,9 @@ const bF = {
         ]),
         cs.value ? (k(), D("div", ux, [
           B("div", dx, [
-            p[41] || (p[41] = B("h3", null, "Rename Account", -1)),
+            p[42] || (p[42] = B("h3", null, "Rename Account", -1)),
             He(B("input", {
-              "onUpdate:modelValue": p[7] || (p[7] = (C) => us.value = C),
+              "onUpdate:modelValue": p[8] || (p[8] = (C) => us.value = C),
               placeholder: Ma.value
             }, null, 8, fx), [
               [Ge, us.value]
@@ -24666,14 +24671,14 @@ const bF = {
             B("div", gx, [
               B("button", { onClick: Vd }, "Save"),
               B("button", {
-                onClick: p[8] || (p[8] = (C) => cs.value = !1)
+                onClick: p[9] || (p[9] = (C) => cs.value = !1)
               }, "Cancel")
             ])
           ])
         ])) : pe("", !0),
         ds.value ? (k(), D("div", px, [
           B("div", mx, [
-            p[43] || (p[43] = B("h3", { class: "screenshots-title" }, "Past Screenshots", -1)),
+            p[44] || (p[44] = B("h3", { class: "screenshots-title" }, "Past Screenshots", -1)),
             rr.value ? (k(), D("div", bx, "Loading screenshots...")) : fs.value.length === 0 ? (k(), D("div", wx, "No screenshots yet.")) : (k(), D("div", Bx, [
               (k(!0), D(Dt, null, ci(fs.value, (C) => (k(), D("div", {
                 key: C.id,
@@ -24693,14 +24698,14 @@ const bF = {
                       dateStyle: "medium",
                       timeStyle: "short"
                     })) + " ", 1),
-                    p[42] || (p[42] = B("span", { style: { color: "#888", "font-size": "12px" } }, "PST", -1))
+                    p[43] || (p[43] = B("span", { style: { color: "#888", "font-size": "12px" } }, "PST", -1))
                   ]),
                   B("div", Qx, [
                     B("a", {
                       href: `data:image/png;base64,${C.image_data}`,
                       download: `positions-screenshot-${C.id}.png`,
                       class: "screenshot-download-link",
-                      onClick: p[9] || (p[9] = qe(() => {
+                      onClick: p[10] || (p[10] = qe(() => {
                       }, ["stop"]))
                     }, "⬇️", 8, xx),
                     B("button", {
@@ -24721,7 +24726,7 @@ const bF = {
             ])),
             B("div", _x, [
               B("button", {
-                onClick: p[10] || (p[10] = (C) => ds.value = !1),
+                onClick: p[11] || (p[11] = (C) => ds.value = !1),
                 class: "screenshots-close"
               }, "Close")
             ])
@@ -24729,7 +24734,7 @@ const bF = {
           kt.value ? (k(), D("div", {
             key: 0,
             class: "screenshot-preview-modal",
-            onClick: p[12] || (p[12] = qe((C) => kt.value = null, ["self"]))
+            onClick: p[13] || (p[13] = qe((C) => kt.value = null, ["self"]))
           }, [
             B("div", Rx, [
               B("img", {
@@ -24743,7 +24748,7 @@ const bF = {
                     dateStyle: "medium",
                     timeStyle: "short"
                   })) + " ", 1),
-                  p[44] || (p[44] = B("span", { style: { color: "#888", "font-size": "12px" } }, "PST", -1))
+                  p[45] || (p[45] = B("span", { style: { color: "#888", "font-size": "12px" } }, "PST", -1))
                 ]),
                 B("a", {
                   href: `data:image/png;base64,${kt.value.image_data}`,
@@ -24751,7 +24756,7 @@ const bF = {
                   class: "screenshot-download-link"
                 }, "⬇️ Download", 8, Tx),
                 B("button", {
-                  onClick: p[11] || (p[11] = (C) => kt.value = null),
+                  onClick: p[12] || (p[12] = (C) => kt.value = null),
                   class: "screenshot-preview-close"
                 }, "Close")
               ])
@@ -24760,9 +24765,9 @@ const bF = {
         ])) : pe("", !0),
         sA.value ? (k(), D("div", Mx, [
           B("div", Ix, [
-            p[45] || (p[45] = B("h3", null, "Name screenshot", -1)),
+            p[46] || (p[46] = B("h3", null, "Name screenshot", -1)),
             He(B("input", {
-              "onUpdate:modelValue": p[13] || (p[13] = (C) => nA.value = C),
+              "onUpdate:modelValue": p[14] || (p[14] = (C) => nA.value = C),
               placeholder: "Enter a name (optional)"
             }, null, 512), [
               [Ge, nA.value]
@@ -24770,7 +24775,7 @@ const bF = {
             B("div", kx, [
               B("button", { onClick: Nd }, "Save & Capture"),
               B("button", {
-                onClick: p[14] || (p[14] = (C) => sA.value = !1)
+                onClick: p[15] || (p[15] = (C) => sA.value = !1)
               }, "Cancel")
             ])
           ])
@@ -24804,9 +24809,9 @@ const bF = {
         ]),
         ps.value ? (k(), D("div", Jx, [
           B("div", Yx, [
-            p[46] || (p[46] = B("h3", null, "Rename Screenshot", -1)),
+            p[47] || (p[47] = B("h3", null, "Rename Screenshot", -1)),
             He(B("input", {
-              "onUpdate:modelValue": p[15] || (p[15] = (C) => ms.value = C),
+              "onUpdate:modelValue": p[16] || (p[16] = (C) => ms.value = C),
               placeholder: "Enter new name"
             }, null, 512), [
               [Ge, ms.value]
@@ -24814,41 +24819,41 @@ const bF = {
             B("div", $x, [
               B("button", { onClick: jd }, "Save"),
               B("button", {
-                onClick: p[16] || (p[16] = (C) => ps.value = !1)
+                onClick: p[17] || (p[17] = (C) => ps.value = !1)
               }, "Cancel")
             ])
           ])
         ])) : pe("", !0),
         hi.value ? (k(), D("div", Zx, [
           B("div", qx, [
-            p[47] || (p[47] = B("h3", null, "Edit NLV & Maintenance Margin", -1)),
-            p[48] || (p[48] = B("label", null, "NLV:", -1)),
+            p[48] || (p[48] = B("h3", null, "Edit NLV & Maintenance Margin", -1)),
+            p[49] || (p[49] = B("label", null, "NLV:", -1)),
             He(B("input", {
               type: "number",
-              "onUpdate:modelValue": p[17] || (p[17] = (C) => Bs.value = C)
+              "onUpdate:modelValue": p[18] || (p[18] = (C) => Bs.value = C)
             }, null, 512), [
               [Ge, Bs.value]
             ]),
-            p[49] || (p[49] = B("label", null, "Maintenance Margin:", -1)),
+            p[50] || (p[50] = B("label", null, "Maintenance Margin:", -1)),
             He(B("input", {
               type: "number",
-              "onUpdate:modelValue": p[18] || (p[18] = (C) => vs.value = C)
+              "onUpdate:modelValue": p[19] || (p[19] = (C) => vs.value = C)
             }, null, 512), [
               [Ge, vs.value]
             ]),
             B("div", eU, [
               B("button", { onClick: Zd }, "Save"),
               B("button", {
-                onClick: p[19] || (p[19] = (C) => hi.value = null)
+                onClick: p[20] || (p[20] = (C) => hi.value = null)
               }, "Cancel")
             ])
           ])
         ])) : pe("", !0),
         v.value ? (k(), D("div", tU, [
           B("div", iU, [
-            p[50] || (p[50] = B("h3", null, "Rename App", -1)),
+            p[51] || (p[51] = B("h3", null, "Rename App", -1)),
             He(B("input", {
-              "onUpdate:modelValue": p[20] || (p[20] = (C) => Q.value = C),
+              "onUpdate:modelValue": p[21] || (p[21] = (C) => Q.value = C),
               placeholder: "App name"
             }, null, 512), [
               [Ge, Q.value]
@@ -24856,16 +24861,16 @@ const bF = {
             B("div", AU, [
               B("button", { onClick: _ }, "Save"),
               B("button", {
-                onClick: p[21] || (p[21] = (C) => v.value = !1)
+                onClick: p[22] || (p[22] = (C) => v.value = !1)
               }, "Cancel")
             ])
           ])
         ])) : pe("", !0),
         ns.value ? (k(), D("div", sU, [
           B("div", nU, [
-            p[51] || (p[51] = B("h3", null, "Rename Column", -1)),
+            p[52] || (p[52] = B("h3", null, "Rename Column", -1)),
             He(B("input", {
-              "onUpdate:modelValue": p[22] || (p[22] = (C) => rs.value = C),
+              "onUpdate:modelValue": p[23] || (p[23] = (C) => rs.value = C),
               placeholder: "Column name"
             }, null, 512), [
               [Ge, rs.value]
@@ -24879,7 +24884,7 @@ const bF = {
       ], 64);
     };
   }
-}), pU = /* @__PURE__ */ Ed(rU, [["__scopeId", "data-v-9c891d3e"]]);
+}), pU = /* @__PURE__ */ Ed(rU, [["__scopeId", "data-v-094f1384"]]);
 export {
   pU as Summary,
   pU as default
