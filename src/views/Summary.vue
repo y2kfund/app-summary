@@ -47,6 +47,7 @@ const props = withDefaults(defineProps<SummaryProps>(), {
 
 const emit = defineEmits<{
   'minimize': []
+  'maximize': []
 }>()
 
 // 2. REPLACE grid refs
@@ -1888,6 +1889,14 @@ watch(filteredMetrics, (newVal) => {
               </svg>
             </button>
             
+            <button
+              @click="emit('maximize')"
+              class="maximize-button"
+              title="Maximize"
+            >
+              ⤢
+            </button>
+
             <button 
               @click="emit('minimize')"
               class="minimize-button"
@@ -3488,5 +3497,49 @@ button.btn {
     padding: 2px 5px;
     background: transparent;
     border: 1px solid #dee2e6;
+}
+.minimize-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.minimize-button:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+  color: #374151;
+}
+
+/* MATCHING MAXIMIZE BUTTON STYLE */
+.maximize-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.maximize-button:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+  color: #374151;
 }
 </style>
