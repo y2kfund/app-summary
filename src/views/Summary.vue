@@ -277,6 +277,11 @@ const calculatedMetrics = computed(() => {
     const addlGmvAllowedNlvSide = (maintnanceMarginHeadroomNlvSide * 100) / 30;
     const addlGmvAllowedMaintenanceSide = (maintnanceMarginHeadroomMaintenanceSide * 100) / 30;
     
+    // Calculate total deposits
+    const totalDeposits = 
+      (item.net_cash_transactions_amount || 0) + 
+      (item.net_transfers_amount || 0);
+    
     return {
       ...item,
       maintenance_val_numeric: maintenanceValue, // Add numeric version for calculations
@@ -287,7 +292,8 @@ const calculatedMetrics = computed(() => {
       maintnanceMarginHeadroomNlvSide,
       maintnanceMarginHeadroomMaintenanceSide,
       addlGmvAllowedNlvSide,
-      addlGmvAllowedMaintenanceSide
+      addlGmvAllowedMaintenanceSide,
+      total_deposits: totalDeposits
     };
   });
 });
@@ -466,7 +472,7 @@ watch(summaryColumnRenames, (renames) => {
 }, { deep: true })
 
 // Add column visibility management after the existing reactive variables
-type SummaryColumnField = 'account' | 'nlv_val' | 'maintenance_val' | 'excess_maintenance_margin' | 'addlGmvAllowedNlvSide' | 'addlGmvAllowedMaintenanceSide'
+type SummaryColumnField = 'account' | 'nlv_val' | 'maintenance_val' | 'excess_maintenance_margin' | 'addlGmvAllowedNlvSide' | 'addlGmvAllowedMaintenanceSide' | 'total_deposits'
 
 const allSummaryColumnOptions: Array<{ field: SummaryColumnField; label: string }> = [
   { field: 'account', label: 'Account' },
@@ -474,7 +480,8 @@ const allSummaryColumnOptions: Array<{ field: SummaryColumnField; label: string 
   { field: 'maintenance_val', label: 'Maintenance Margin' },
   { field: 'excess_maintenance_margin', label: 'Excess Maintenance Margin' }, // Add this line
   { field: 'addlGmvAllowedNlvSide', label: "Stop-adding threshold (Add'l GMV)" },
-  { field: 'addlGmvAllowedMaintenanceSide', label: "Start-reducing threshold (Add'l GMV)" }
+  { field: 'addlGmvAllowedMaintenanceSide', label: "Start-reducing threshold (Add'l GMV)" },
+  { field: 'total_deposits', label: 'Total Deposits this year' }
 ]
 
 // URL param helpers for column visibility
@@ -722,6 +729,25 @@ function initializeTabulator() {
         return `<div class="header-with-close">
           <span>${getSummaryColLabel('addlGmvAllowedMaintenanceSide')}</span>
           <button class="header-close-btn" data-field="addlGmvAllowedMaintenanceSide" title="Hide column">✕</button>
+        </div>`
+      },
+      bottomCalc: 'sum',
+      bottomCalcFormatter: (cell: any) => formatCurrency(cell.getValue())
+    },
+    {
+      title: getSummaryColLabel('total_deposits'),
+      field: 'total_deposits',
+      hozAlign: 'right',
+      width: summaryColumnWidths.value['total_deposits'] || undefined,
+      formatter: (cell: any) => {
+        const value = cell.getValue()
+        const formatted = formatCurrency(value)
+        return `<span class="cell-value">${formatted}</span>`
+      },
+      titleFormatter: (cell: any) => {
+        return `<div class="header-with-close">
+          <span>${getSummaryColLabel('total_deposits')}</span>
+          <button class="header-close-btn" data-field="total_deposits" title="Hide column">✕</button>
         </div>`
       },
       bottomCalc: 'sum',
