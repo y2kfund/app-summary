@@ -90,14 +90,14 @@ type Notification = {
 
 // Container states for each account (using container names as keys)
 const containerStates = reactive<Record<string, ContainerState>>({
-  'bansi': { isLoading: false, isStarting: false, isStopping: false },
-  'cis': { isLoading: false, isStarting: false, isStopping: false },
-  'hediye': { isLoading: false, isStarting: false, isStopping: false },
-  'ovlg': { isLoading: false, isStarting: false, isStopping: false },
-  'sc': { isLoading: false, isStarting: false, isStopping: false },
-  'stamp': { isLoading: false, isStarting: false, isStopping: false },
-  'vk': { isLoading: false, isStarting: false, isStopping: false },
-  'jkmdm': { isLoading: false, isStarting: false, isStopping: false }
+  'bansi': { isLoading: false, isStarting: false, isStopping: false, online: false },
+  'cis': { isLoading: false, isStarting: false, isStopping: false, online: false },
+  'hediye': { isLoading: false, isStarting: false, isStopping: false, online: false },
+  'ovlg': { isLoading: false, isStarting: false, isStopping: false, online: false },
+  'sc': { isLoading: false, isStarting: false, isStopping: false, online: false },
+  'stamp': { isLoading: false, isStarting: false, isStopping: false, online: false },
+  'vk': { isLoading: false, isStarting: false, isStopping: false, online: false },
+  'jkmdm': { isLoading: false, isStarting: false, isStopping: false, online: false }
 })
 
 // Notifications
@@ -1397,6 +1397,17 @@ function getContainerNameFromAccountId(clientNumber: number): string {
   return containerMap[clientNumber] || ''
 }
 
+// Helper function to get client number from breakdown item
+function getClientNumberFromItem(item: any): number {
+  // The nlv_internal_account_id directly represents the client number
+  // which maps to the container: 1=bansi, 2=cis, 3=hediye, etc.
+  const clientNumber = typeof item.nlv_internal_account_id === 'string' 
+    ? parseInt(item.nlv_internal_account_id) 
+    : item.nlv_internal_account_id
+  
+  return clientNumber || 0
+}
+
 function getContainerDisplay(clientNumber: number): { online: boolean; lastUpdated?: Date | null } {
   const containerName = getContainerNameFromAccountId(clientNumber)
   const state = containerStates[containerName]
@@ -1407,6 +1418,7 @@ function getContainerDisplay(clientNumber: number): { online: boolean; lastUpdat
 }
 
 async function checkContainerStatus(containerName: string) {
+  //console.log(`Checking status for container: ${containerName}`)
   const state = containerStates[containerName]
   if (!state) return
   
@@ -1418,12 +1430,16 @@ async function checkContainerStatus(containerName: string) {
     : `https://ibkr.${containerName}.to5001.aiworkspace.pro/api/maintenance`
     const response = await fetch(url) 
     const data = await response.json()
-    //console.log(`Checked ${containerName} status:`, data)
+    //console.log(`Checked ${containerName} status:`, data, `state:`, state)
     if (data.maintenance_margin_amount) {
+      //console.log(`Container ${containerName} is online.`)
       state.online = true
       state.lastUpdated = new Date()
       state.lastError = null
     } else {
+      //console.warn(`Container ${containerName} is offline or returned error.`)
+      state.online = false
+      state.lastUpdated = new Date()
       state.lastError = data.error || 'Unknown error'
     }
   } catch (error) {
@@ -1444,6 +1460,7 @@ async function startDockerContainer(containerName: string) {
   state.isLoading = true
   
   try {
+    //console.log(`Starting container: ${containerName}`, `url: ${DOCKER_CONTROL_URL}?action=start&container_name=${containerName}`) ; return;
     const response = await fetch(`${DOCKER_CONTROL_URL}?action=start&container_name=${containerName}`)
     const data = await response.json()
     
@@ -1469,6 +1486,7 @@ async function stopDockerContainer(containerName: string) {
   state.isLoading = true
   
   try {
+    //console.log(`Stopping container: ${containerName}`, `url: ${DOCKER_CONTROL_URL}?action=stop&container_name=${containerName}`) ; return;
     const response = await fetch(`${DOCKER_CONTROL_URL}?action=stop&container_name=${containerName}`)
     const data = await response.json()
     
@@ -1489,7 +1507,6 @@ async function stopDockerContainer(containerName: string) {
 function scheduleContainerPolling() {
   // Check all containers every 30 seconds
   const containerNames = Object.keys(containerStates)
-  
   containerNames.forEach(name => {
     checkContainerStatus(name)
     const timer = setInterval(() => checkContainerStatus(name), 30000) as unknown as number
@@ -2062,63 +2079,30 @@ watch(filteredMetrics, (newVal) => {
             
             <div class="breakdown-header-right">
               <div class="docker-control-section">
-                <div class="container-status-badge" :class="getContainerDisplay(calculatedMetrics?.findIndex(m => {
-                  const mAccountId = typeof m.nlv_internal_account_id === 'string' ? parseInt(m.nlv_internal_account_id) : m.nlv_internal_account_id;
-                  const itemAccountId = typeof item.nlv_internal_account_id === 'string' ? parseInt(item.nlv_internal_account_id) : item.nlv_internal_account_id;
-                  return mAccountId === itemAccountId;
-                }) + 1).online ? 'status-online' : 'status-offline'">
-                  {{ getContainerDisplay(calculatedMetrics?.findIndex(m => {
-                    const mAccountId = typeof m.nlv_internal_account_id === 'string' ? parseInt(m.nlv_internal_account_id) : m.nlv_internal_account_id;
-                    const itemAccountId = typeof item.nlv_internal_account_id === 'string' ? parseInt(item.nlv_internal_account_id) : item.nlv_internal_account_id;
-                    return mAccountId === itemAccountId;
-                  }) + 1).online ? '🟢 Online' : '🔴 Offline' }}
+                <div 
+                  class="container-status-badge" 
+                  :class="getContainerDisplay(getClientNumberFromItem(item)).online ? 'status-online' : 'status-offline'"
+                >
+                  {{ getContainerDisplay(getClientNumberFromItem(item)).online ? '🟢 Online' : '🔴 Offline' }}
                 </div>
                 
                 <button 
-                  v-if="!getContainerDisplay(calculatedMetrics?.findIndex(m => {
-                    const mAccountId = typeof m.nlv_internal_account_id === 'string' ? parseInt(m.nlv_internal_account_id) : m.nlv_internal_account_id;
-                    const itemAccountId = typeof item.nlv_internal_account_id === 'string' ? parseInt(item.nlv_internal_account_id) : item.nlv_internal_account_id;
-                    return mAccountId === itemAccountId;
-                  }) + 1).online"
+                  v-if="!getContainerDisplay(getClientNumberFromItem(item)).online"
                   class="docker-control-btn start-btn"
-                  :disabled="containerStates[getContainerNameFromAccountId(calculatedMetrics?.findIndex(m => {
-                    const mAccountId = typeof m.nlv_internal_account_id === 'string' ? parseInt(m.nlv_internal_account_id) : m.nlv_internal_account_id;
-                    const itemAccountId = typeof item.nlv_internal_account_id === 'string' ? parseInt(item.nlv_internal_account_id) : item.nlv_internal_account_id;
-                    return mAccountId === itemAccountId;
-                  }) + 1)]?.isLoading"
-                  @click.stop="startDockerContainer(getContainerNameFromAccountId(calculatedMetrics?.findIndex(m => {
-                    const mAccountId = typeof m.nlv_internal_account_id === 'string' ? parseInt(m.nlv_internal_account_id) : m.nlv_internal_account_id;
-                    const itemAccountId = typeof item.nlv_internal_account_id === 'string' ? parseInt(item.nlv_internal_account_id) : item.nlv_internal_account_id;
-                    return mAccountId === itemAccountId;
-                  }) + 1))"
+                  :disabled="containerStates[getContainerNameFromAccountId(getClientNumberFromItem(item))]?.isLoading"
+                  @click.stop="startDockerContainer(getContainerNameFromAccountId(getClientNumberFromItem(item)))"
                 >
-                  <span v-if="containerStates[getContainerNameFromAccountId(calculatedMetrics?.findIndex(m => {
-                    const mAccountId = typeof m.nlv_internal_account_id === 'string' ? parseInt(m.nlv_internal_account_id) : m.nlv_internal_account_id;
-                    const itemAccountId = typeof item.nlv_internal_account_id === 'string' ? parseInt(item.nlv_internal_account_id) : item.nlv_internal_account_id;
-                    return mAccountId === itemAccountId;
-                  }) + 1)]?.isStarting">Starting...</span>
+                  <span v-if="containerStates[getContainerNameFromAccountId(getClientNumberFromItem(item))]?.isStarting">Starting...</span>
                   <span v-else>▶️ Start Container</span>
                 </button>
                 
                 <button 
                   v-else
                   class="docker-control-btn stop-btn"
-                  :disabled="containerStates[getContainerNameFromAccountId(calculatedMetrics?.findIndex(m => {
-                    const mAccountId = typeof m.nlv_internal_account_id === 'string' ? parseInt(m.nlv_internal_account_id) : m.nlv_internal_account_id;
-                    const itemAccountId = typeof item.nlv_internal_account_id === 'string' ? parseInt(item.nlv_internal_account_id) : item.nlv_internal_account_id;
-                    return mAccountId === itemAccountId;
-                  }) + 1)]?.isLoading"
-                  @click.stop="stopDockerContainer(getContainerNameFromAccountId(calculatedMetrics?.findIndex(m => {
-                    const mAccountId = typeof m.nlv_internal_account_id === 'string' ? parseInt(m.nlv_internal_account_id) : m.nlv_internal_account_id;
-                    const itemAccountId = typeof item.nlv_internal_account_id === 'string' ? parseInt(item.nlv_internal_account_id) : item.nlv_internal_account_id;
-                    return mAccountId === itemAccountId;
-                  }) + 1))"
+                  :disabled="containerStates[getContainerNameFromAccountId(getClientNumberFromItem(item))]?.isLoading"
+                  @click.stop="stopDockerContainer(getContainerNameFromAccountId(getClientNumberFromItem(item)))"
                 >
-                  <span v-if="containerStates[getContainerNameFromAccountId(calculatedMetrics?.findIndex(m => {
-                    const mAccountId = typeof m.nlv_internal_account_id === 'string' ? parseInt(m.nlv_internal_account_id) : m.nlv_internal_account_id;
-                    const itemAccountId = typeof item.nlv_internal_account_id === 'string' ? parseInt(item.nlv_internal_account_id) : item.nlv_internal_account_id;
-                    return mAccountId === itemAccountId;
-                  }) + 1)]?.isStopping">Stopping...</span>
+                  <span v-if="containerStates[getContainerNameFromAccountId(getClientNumberFromItem(item))]?.isStopping">Stopping...</span>
                   <span v-else>⏹️ Stop Container</span>
                 </button>
               </div>
