@@ -600,8 +600,9 @@ function initializeTabulator() {
         const statusClass = status === 'STAGE 2 EXHAUSTED' ? 'status-stage2' : 
                            status === 'STAGE 1 EXHAUSTED' ? 'status-stage1' : 'status-ok'
 
-        let html = `<span class="account-name">${data.legal_entity || data.account}</span>
-        <span class="status-badge ${statusClass}">${status}</span>`
+        /*let html = `<span class="account-name">${data.legal_entity || data.account}</span>
+        <span class="status-badge ${statusClass}">${status}</span>`*/
+        let html = `<span class="account-name">${data.legal_entity || data.account}</span>`
         if (manualSyncAccounts.value.has(data.nlv_internal_account_id)) {
           html += `<button class="edit-btn" data-id="${data.nlv_internal_account_id}">✏️</button>`
         }
