@@ -23606,10 +23606,9 @@ const hF = {
               return `<div class="account-cell total-row">
             <span class="account-name">All Accounts</span>
           </div>`;
-            const L = F.addlGmvAllowedNlvSide < 0 && F.addlGmvAllowedMaintenanceSide < 0 ? "STAGE 2 EXHAUSTED" : F.addlGmvAllowedNlvSide < 0 ? "STAGE 1 EXHAUSTED" : "OK", T = L === "STAGE 2 EXHAUSTED" ? "status-stage2" : L === "STAGE 1 EXHAUSTED" ? "status-stage1" : "status-ok";
-            let y = `<span class="account-name">${F.legal_entity || F.account}</span>
-        <span class="status-badge ${T}">${L}</span>`;
-            return Pd.value.has(F.nlv_internal_account_id) && (y += `<button class="edit-btn" data-id="${F.nlv_internal_account_id}">✏️</button>`), `<div class="account-cell clickable-account">${y}</div>`;
+            F.addlGmvAllowedNlvSide < 0 && F.addlGmvAllowedMaintenanceSide < 0 || F.addlGmvAllowedNlvSide < 0;
+            let L = `<span class="account-name">${F.legal_entity || F.account}</span>`;
+            return Pd.value.has(F.nlv_internal_account_id) && (L += `<button class="edit-btn" data-id="${F.nlv_internal_account_id}">✏️</button>`), `<div class="account-cell clickable-account">${L}</div>`;
           },
           titleFormatter: (g) => `<div class="header-with-close">
           <span>${Oe("account")}</span>
@@ -24873,7 +24872,7 @@ const hF = {
       ], 64);
     };
   }
-}), aU = /* @__PURE__ */ fd(Zx, [["__scopeId", "data-v-d80de865"]]);
+}), aU = /* @__PURE__ */ fd(Zx, [["__scopeId", "data-v-fadf1cb7"]]);
 export {
   aU as Summary,
   aU as default
