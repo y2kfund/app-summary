@@ -2821,7 +2821,6 @@ button.edit-btn {
 .summary-grid {
   margin-top: 1rem;
   height: auto;
-  min-height: 200px;
 }
 
 /* 18. ADD Tabulator specific styles */
