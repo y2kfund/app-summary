@@ -24872,7 +24872,7 @@ const hF = {
       ], 64);
     };
   }
-}), aU = /* @__PURE__ */ fd(Zx, [["__scopeId", "data-v-fadf1cb7"]]);
+}), aU = /* @__PURE__ */ fd(Zx, [["__scopeId", "data-v-51ceabbe"]]);
 export {
   aU as Summary,
   aU as default
