@@ -26,6 +26,12 @@ import { Line } from 'vue-chartjs'
 import type { SummaryProps } from '../index'
 import html2canvas from 'html2canvas'
 import AddClientDialog from '../components/AddClientDialog.vue'
+import flatpickr from 'flatpickr'
+import 'flatpickr/dist/flatpickr.min.css'
+const today = new Date().toISOString().slice(0, 10)
+const asOfDate = ref<string | null>(null)
+function clearAsOfDate() { asOfDate.value = null }
+const summaryDateInput = ref<HTMLInputElement | null>(null)
 
 // Register Chart.js components
 ChartJS.register(
@@ -40,9 +46,9 @@ ChartJS.register(
 
 const props = withDefaults(defineProps<SummaryProps>(), {
   showHeaderLink: false,
-  userId: null,
-  window: null
-  //userId: "67e578fd-2cf7-48a4-b028-a11a3f89bb9b"
+  //userId: null,
+  window: null,
+  userId: "67e578fd-2cf7-48a4-b028-a11a3f89bb9b"
 })
 
 const emit = defineEmits<{
@@ -59,7 +65,7 @@ let tabulator: Tabulator | null = null
 // const columnApiRef = ref<ColumnApi | null>(null)
 const showArchivedClients = ref(false)
 //const q = useNlvMarginQuery(10, props.userId)
-const q = useNlvMarginQuery(10, props.userId)
+const q = useNlvMarginQuery(10, props.userId, asOfDate)
 
 // State for graph visibility and selected account
 const graphVisibility: { [key: number]: { nlv: boolean; mm: boolean } } = reactive({});
@@ -1024,6 +1030,10 @@ watch(summaryVisibleCols, (cols) => {
   })
 }, { deep: true })
 
+watch(asOfDate, () => {
+  if (q.refetch) q.refetch()
+})
+
 // 12. UPDATE onMounted
 onMounted(() => {
   selectedClientFromUrl.value = getUrlParams()
@@ -1054,6 +1064,28 @@ watch(() => q.isSuccess.value, (isSuccess) => {
   if (isSuccess) {
     nextTick(() => {
       initializeTabulator()
+
+      if (summaryDateInput.value) {
+        flatpickr(summaryDateInput.value, {
+          dateFormat: 'Y-m-d',
+          maxDate: today,
+          clickOpens: true,
+          // Add this to prevent timezone issues
+          parseDate: (datestr: string) => {
+            return new Date(datestr + 'T00:00:00');
+          },
+          onChange: (selectedDates) => {
+            if (selectedDates.length > 0) {
+              // Use UTC date string to avoid timezone conversion
+              const date = selectedDates[0];
+              const year = date.getFullYear();
+              const month = String(date.getMonth() + 1).padStart(2, '0');
+              const day = String(date.getDate()).padStart(2, '0');
+              asOfDate.value = `${year}-${month}-${day}`;
+            }
+          }
+        })
+      }
     })
   }
 })
@@ -1911,6 +1943,23 @@ watch(filteredMetrics, (newVal) => {
               style="width:auto;padding: 2px 7px; font-size: 13px; background: none; border: none; color: #888; cursor: pointer;"
             >✎</button>
           </h2>
+
+          <!-- ADD DATE PICKER HERE -->
+          <div class="summary-date-picker">
+            <label for="summaryAsOfDate">As of:</label>
+            <input
+              id="summaryAsOfDate"
+              ref="summaryDateInput"
+              type="text"
+              :value="asOfDate || ''"
+              placeholder="Select date"
+              readonly
+              style="margin-left: 0.5em; cursor: pointer; padding: 4px 8px; border: 1px solid #d1d5db; border-radius: 4px;"
+            />
+            <button v-if="asOfDate" @click="clearAsOfDate" style="margin-left: 0.5em; padding: 4px 8px; border: 1px solid #d1d5db; border-radius: 4px; cursor: pointer; background: white;">Clear</button>
+            <span v-if="q.isFetching.value" style="margin-left: 0.7em; color: #888;">Loading...</span>
+          </div>
+
           <div class="header-tools">
             <button class="btn" @click="showArchivedClients = !showArchivedClients" :title="showArchivedClients ? `Hide archived clients` : `Show archived clients`">
               <span v-if="showArchivedClients">🗄️</span>
@@ -3553,5 +3602,25 @@ button.btn {
   background: #f3f4f6;
   border-color: #9ca3af;
   color: #374151;
+}
+
+.summary-date-picker {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  margin-right: 1rem;
+}
+.summary-date-picker label {
+  font-size: 14px;
+  color: #374151;
+  font-weight: 500;
+}
+.block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 </style>

@@ -10,6 +10,7 @@ declare const _default: import('vue').DefineComponent<SummaryProps, {}, {}, {}, 
     userId: string | null;
     window: string | null;
 }, {}, {}, {}, string, import('vue').ComponentProvideOptions, false, {
+    summaryDateInput: HTMLInputElement;
     summaryColumnsBtnRef: HTMLButtonElement;
     summaryColumnsPopupRef: HTMLDivElement;
     tableDiv: HTMLDivElement;
