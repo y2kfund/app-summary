@@ -1956,7 +1956,7 @@ watch(filteredMetrics, (newVal) => {
               readonly
               style="margin-left: 0.5em; cursor: pointer; padding: 4px 8px; border: 1px solid #d1d5db; border-radius: 4px;"
             />
-            <button v-if="asOfDate" @click="clearAsOfDate" style="margin-left: 0.5em; padding: 4px 8px; border: 1px solid #d1d5db; border-radius: 4px; cursor: pointer; background: white;">Clear</button>
+            <button v-if="asOfDate" @click="clearAsOfDate" style="margin-left: 0.5em; padding: 4px 8px; border: 1px solid #d1d5db; border-radius: 4px; cursor: pointer; width: auto;">Clear</button>
             <span v-if="q.isFetching.value" style="margin-left: 0.7em; color: #888;">Loading...</span>
           </div>
 

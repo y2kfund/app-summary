@@ -25832,7 +25832,7 @@ const cQ = { class: "notification-container" }, uQ = { class: "notification-cont
                   i.value ? (V(), z("button", {
                     key: 0,
                     onClick: A,
-                    style: { "margin-left": "0.5em", padding: "4px 8px", border: "1px solid #d1d5db", "border-radius": "4px", cursor: "pointer", background: "white" }
+                    style: { "margin-left": "0.5em", padding: "4px 8px", border: "1px solid #d1d5db", "border-radius": "4px", cursor: "pointer", width: "auto" }
                   }, "Clear")) : xe("", !0),
                   Zt(c).isFetching.value ? (V(), z("span", FQ, "Loading...")) : xe("", !0)
                 ]),
@@ -26343,7 +26343,7 @@ const cQ = { class: "notification-container" }, uQ = { class: "notification-cont
       ], 64);
     };
   }
-}), jU = /* @__PURE__ */ of(IU, [["__scopeId", "data-v-e731ba98"]]);
+}), jU = /* @__PURE__ */ of(IU, [["__scopeId", "data-v-d045ef3b"]]);
 export {
   jU as Summary,
   jU as default
