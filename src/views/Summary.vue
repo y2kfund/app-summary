@@ -97,7 +97,8 @@ const containerStates = reactive<Record<string, ContainerState>>({
   'sc': { isLoading: false, isStarting: false, isStopping: false, online: false },
   'stamp': { isLoading: false, isStarting: false, isStopping: false, online: false },
   'vk': { isLoading: false, isStarting: false, isStopping: false, online: false },
-  'jkmdm': { isLoading: false, isStarting: false, isStopping: false, online: false }
+  'jkmdm': { isLoading: false, isStarting: false, isStopping: false, online: false },
+  'ristc': { isLoading: false, isStarting: false, isStopping: false, online: false }
 })
 
 // Notifications
@@ -1393,7 +1394,8 @@ function getContainerNameFromAccountId(clientNumber: number): string {
     5: 'sc',
     6: 'stamp',
     7: 'vk',
-    8: 'jkmdm'
+    8: 'jkmdm',
+    9: 'ristc'
   }
   return containerMap[clientNumber] || ''
 }

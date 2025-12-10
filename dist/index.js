@@ -11053,6 +11053,7 @@ var Qp = Fp;
 const xp = Symbol.for("y2kfund.supabase"), Up = {
   positions: (s, e) => ["positions", s, e],
   trades: (s) => ["trades", s],
+  orders: (s) => ["orders", s],
   cashTransactions: (s) => ["cashTransactions", s],
   transfers: (s) => ["transfers", s],
   nlvMargin: (s, e) => ["nlvMargin", s, e],
@@ -23378,7 +23379,8 @@ const hF = {
       sc: { isLoading: !1, isStarting: !1, isStopping: !1, online: !1 },
       stamp: { isLoading: !1, isStarting: !1, isStopping: !1, online: !1 },
       vk: { isLoading: !1, isStarting: !1, isStopping: !1, online: !1 },
-      jkmdm: { isLoading: !1, isStarting: !1, isStopping: !1, online: !1 }
+      jkmdm: { isLoading: !1, isStarting: !1, isStopping: !1, online: !1 },
+      ristc: { isLoading: !1, isStarting: !1, isStopping: !1, online: !1 }
     }), d = N([]);
     let f = 0;
     function p() {
@@ -24064,7 +24066,8 @@ const hF = {
         5: "sc",
         6: "stamp",
         7: "vk",
-        8: "jkmdm"
+        8: "jkmdm",
+        9: "ristc"
       }[w] || "";
     }
     function wt(w) {
@@ -24872,7 +24875,7 @@ const hF = {
       ], 64);
     };
   }
-}), aU = /* @__PURE__ */ fd(Zx, [["__scopeId", "data-v-51ceabbe"]]);
+}), aU = /* @__PURE__ */ fd(Zx, [["__scopeId", "data-v-ef28b706"]]);
 export {
   aU as Summary,
   aU as default
