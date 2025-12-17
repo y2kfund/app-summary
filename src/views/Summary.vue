@@ -479,12 +479,13 @@ watch(summaryColumnRenames, (renames) => {
 }, { deep: true })
 
 // Add column visibility management after the existing reactive variables
-type SummaryColumnField = 'account' | 'nlv_val' | 'maintenance_val' | 'excess_maintenance_margin' | 'addlGmvAllowedNlvSide' | 'addlGmvAllowedMaintenanceSide' | 'total_deposits'
+type SummaryColumnField = 'account' | 'nlv_val' | 'maintenance_val' | 'mm_nlv_ratio' | 'excess_maintenance_margin' | 'addlGmvAllowedNlvSide' | 'addlGmvAllowedMaintenanceSide' | 'total_deposits'
 
 const allSummaryColumnOptions: Array<{ field: SummaryColumnField; label: string }> = [
   { field: 'account', label: 'Account' },
   { field: 'nlv_val', label: 'NLV' },
   { field: 'maintenance_val', label: 'Maintenance Margin' },
+  { field: 'mm_nlv_ratio', label: 'MM/NLV' },
   { field: 'excess_maintenance_margin', label: 'Excess Maintenance Margin' }, // Add this line
   { field: 'addlGmvAllowedNlvSide', label: "Stop-adding threshold (Add'l GMV)" },
   { field: 'addlGmvAllowedMaintenanceSide', label: "Start-reducing threshold (Add'l GMV)" },
@@ -680,6 +681,44 @@ function initializeTabulator() {
       bottomCalcFormatter: (cell: any) => {
         const value = typeof cell.getValue() === 'string' ? parseFloat(cell.getValue()) : cell.getValue()
         return formatCurrency(value)
+      }
+    },
+    {
+      title: getSummaryColLabel('mm_nlv_ratio'),
+      field: 'mm_nlv_ratio',
+      hozAlign: 'right',
+      width: summaryColumnWidths.value['mm_nlv_ratio'] || undefined,
+      formatter: (cell: any) => {
+        const data = cell.getRow().getData()
+        const nlv = data.nlv_val
+        const maintenance = typeof data.maintenance_val === 'string' 
+          ? parseFloat(data.maintenance_val) 
+          : data.maintenance_val
+        
+        if (!nlv || nlv === 0) return '<span>N/A</span>'
+        
+        const ratio = (maintenance / nlv) * 100
+        const formatted = ratio.toFixed(2) + '%'
+        
+        if (data.isTotal) {
+          return `<span class="cell-value total-cell">${formatted}</span>`
+        }
+        return `<span class="cell-value">${formatted}</span>`
+      },
+      titleFormatter: (cell: any) => {
+        return `<div class="header-with-close">
+          <span>${getSummaryColLabel('mm_nlv_ratio')}</span>
+          <button class="header-close-btn" data-field="mm_nlv_ratio" title="Hide column">✕</button>
+        </div>`
+      },
+      sorter: (a: any, b: any, aRow: any, bRow: any) => {
+        const aData = aRow.getData()
+        const bData = bRow.getData()
+        
+        const aRatio = aData.nlv_val ? (aData.maintenance_val_numeric / aData.nlv_val) : 0
+        const bRatio = bData.nlv_val ? (bData.maintenance_val_numeric / bData.nlv_val) : 0
+        
+        return aRatio - bRatio
       }
     },
     {
