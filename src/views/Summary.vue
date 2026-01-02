@@ -10,6 +10,7 @@ import { TabulatorFull as Tabulator } from 'tabulator-tables'
 
 import { onMounted, onBeforeUnmount, computed, reactive, inject, ref, watch, nextTick } from 'vue'
 import { useNlvMarginQuery, type nlvMargin } from '@y2kfund/core/nlvMargin'
+import { useSettledCashQuery, type SettledCash } from '@y2kfund/core/settledCash'
 import { useQuery, useQueryClient } from '@tanstack/vue-query'
 import { useSupabase } from '@y2kfund/core'
 import {
@@ -66,6 +67,7 @@ let tabulator: Tabulator | null = null
 const showArchivedClients = ref(false)
 //const q = useNlvMarginQuery(10, props.userId)
 const q = useNlvMarginQuery(10, props.userId, asOfDate)
+const settledCashQuery = useSettledCashQuery(100, props.userId, asOfDate)
 
 // State for graph visibility and selected account
 const graphVisibility: { [key: number]: { nlv: boolean; mm: boolean } } = reactive({});
@@ -268,6 +270,15 @@ function calculateGmax(nlv: number, maintenance_margin_caled_m: number, drop_cal
 
 const calculatedMetrics = computed(() => {
   if (!q.data.value) return [];
+  
+  // Create a map of settled cash by internal_account_id
+  const settledCashMap = new Map<string, number>();
+  if (settledCashQuery.data.value) {
+    settledCashQuery.data.value.forEach(cash => {
+      settledCashMap.set(cash.internal_account_id, cash.settled_cash);
+    });
+  }
+  
   return q.data.value.map(item => {
     const maxGmvNlvSide = calculateGmax(item.nlv_val, 0.30, 0.15);
     const maxGmvMaintenanceSide = calculateGmax(item.nlv_val, 0.30, 0.10);
@@ -289,6 +300,9 @@ const calculatedMetrics = computed(() => {
       (item.net_cash_transactions_amount || 0) + 
       (item.net_transfers_amount || 0);
     
+    // Get settled cash for this account
+    const settledCash = settledCashMap.get(item.nlv_internal_account_id || '') || 0;
+    
     return {
       ...item,
       maintenance_val_numeric: maintenanceValue, // Add numeric version for calculations
@@ -300,7 +314,8 @@ const calculatedMetrics = computed(() => {
       maintnanceMarginHeadroomMaintenanceSide,
       addlGmvAllowedNlvSide,
       addlGmvAllowedMaintenanceSide,
-      total_deposits: totalDeposits
+      total_deposits: totalDeposits,
+      settled_cash: settledCash
     };
   });
 });
@@ -479,7 +494,7 @@ watch(summaryColumnRenames, (renames) => {
 }, { deep: true })
 
 // Add column visibility management after the existing reactive variables
-type SummaryColumnField = 'account' | 'nlv_val' | 'maintenance_val' | 'mm_nlv_ratio' | 'excess_maintenance_margin' | 'addlGmvAllowedNlvSide' | 'addlGmvAllowedMaintenanceSide' | 'total_deposits'
+type SummaryColumnField = 'account' | 'nlv_val' | 'maintenance_val' | 'mm_nlv_ratio' | 'excess_maintenance_margin' | 'addlGmvAllowedNlvSide' | 'addlGmvAllowedMaintenanceSide' | 'total_deposits' | 'settled_cash'
 
 const allSummaryColumnOptions: Array<{ field: SummaryColumnField; label: string }> = [
   { field: 'account', label: 'Account' },
@@ -489,7 +504,8 @@ const allSummaryColumnOptions: Array<{ field: SummaryColumnField; label: string 
   { field: 'excess_maintenance_margin', label: 'Excess Maintenance Margin' }, // Add this line
   { field: 'addlGmvAllowedNlvSide', label: "Stop-adding threshold (Add'l GMV)" },
   { field: 'addlGmvAllowedMaintenanceSide', label: "Start-reducing threshold (Add'l GMV)" },
-  { field: 'total_deposits', label: 'Total Deposits this year' }
+  { field: 'total_deposits', label: 'Total Deposits this year' },
+  { field: 'settled_cash', label: 'Settled Cash' }
 ]
 
 // URL param helpers for column visibility
@@ -799,6 +815,26 @@ function initializeTabulator() {
       },
       bottomCalc: 'sum',
       bottomCalcFormatter: (cell: any) => formatCurrency(cell.getValue())
+    },
+    {
+      title: getSummaryColLabel('settled_cash'),
+      field: 'settled_cash',
+      hozAlign: 'right',
+      width: summaryColumnWidths.value['settled_cash'] || undefined,
+      formatter: (cell: any) => {
+        const value = cell.getValue()
+        const formatted = formatCurrency(value)
+        const isNegative = value < 0
+        return `<span class="cell-value ${isNegative ? 'negative' : ''}">${formatted}</span>`
+      },
+      titleFormatter: (cell: any) => {
+        return `<div class="header-with-close">
+          <span>${getSummaryColLabel('settled_cash')}</span>
+          <button class="header-close-btn" data-field="settled_cash" title="Hide column">✕</button>
+        </div>`
+      },
+      bottomCalc: 'sum',
+      bottomCalcFormatter: (cell: any) => formatCurrency(cell.getValue())
     }
   ].filter(col => summaryVisibleCols.value.includes(col.field as SummaryColumnField))
 
@@ -1071,6 +1107,16 @@ watch(summaryVisibleCols, (cols) => {
 
 watch(asOfDate, () => {
   if (q.refetch) q.refetch()
+  if (settledCashQuery.refetch) settledCashQuery.refetch()
+})
+
+// Watch for settled cash data changes and update table
+watch(() => settledCashQuery.data.value, () => {
+  if (tabulator) {
+    nextTick(() => {
+      tabulator.replaceData(gridRowData.value)
+    })
+  }
 })
 
 // 12. UPDATE onMounted
