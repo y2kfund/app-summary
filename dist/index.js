@@ -1,7 +1,7 @@
 var Uf = Object.defineProperty;
 var Hf = (s, e, t) => e in s ? Uf(s, e, { enumerable: !0, configurable: !0, writable: !0, value: t }) : s[e] = t;
 var S = (s, e, t) => Hf(s, typeof e != "symbol" ? e + "" : e, t);
-import { inject as jc, defineComponent as Sr, shallowRef as Xc, h as Wo, ref as ee, onMounted as jo, onUnmounted as _f, watch as St, toRaw as Xo, nextTick as Mt, version as Mf, isProxy as Yc, reactive as sr, createElementBlock as z, createCommentVNode as Qe, openBlock as V, createElementVNode as y, withModifiers as vt, withDirectives as ze, vModelText as at, createTextVNode as Fi, vModelRadio as Hl, toDisplayString as le, computed as Je, onBeforeUnmount as Df, resolveComponent as Sf, Fragment as di, renderList as Gi, normalizeClass as bn, unref as Yt, createBlock as Tf, withCtx as _l, createVNode as wn, vModelCheckbox as Lf, normalizeStyle as Rf, TransitionGroup as If } from "vue";
+import { inject as jc, defineComponent as Sr, shallowRef as Xc, h as Wo, ref as ee, onMounted as jo, onUnmounted as _f, watch as St, toRaw as Xo, nextTick as Mt, version as Mf, isProxy as Yc, reactive as sr, openBlock as V, createElementBlock as z, createElementVNode as y, withModifiers as vt, withDirectives as ze, vModelText as at, vModelRadio as Hl, createTextVNode as Fi, createCommentVNode as Qe, toDisplayString as le, computed as Je, onBeforeUnmount as Df, resolveComponent as Sf, Fragment as di, renderList as Gi, normalizeClass as bn, unref as Yt, createBlock as Tf, withCtx as _l, vModelCheckbox as Lf, createVNode as wn, normalizeStyle as Rf, TransitionGroup as If } from "vue";
 import { useQueryClient as Al, useQuery as MA } from "@tanstack/vue-query";
 import { useSupabase as Jc } from "@y2kfund/core";
 class je {
@@ -24911,7 +24911,8 @@ const dQ = { class: "notification-container" }, fQ = { class: "notification-cont
       stamp: { isLoading: !1, isStarting: !1, isStopping: !1, online: !1 },
       vk: { isLoading: !1, isStarting: !1, isStopping: !1, online: !1 },
       jkmdm: { isLoading: !1, isStarting: !1, isStopping: !1, online: !1 },
-      ristc: { isLoading: !1, isStarting: !1, isStopping: !1, online: !1 }
+      ristc: { isLoading: !1, isStarting: !1, isStopping: !1, online: !1 },
+      internext: { isLoading: !1, isStarting: !1, isStopping: !1, online: !1 }
     }), B = ee([]);
     let U = 0;
     function Q() {
@@ -25661,7 +25662,8 @@ const dQ = { class: "notification-container" }, fQ = { class: "notification-cont
         6: "stamp",
         7: "vk",
         8: "jkmdm",
-        11: "ristc"
+        11: "ristc",
+        12: "internext"
       }[C] || "";
     }
     function $(C) {
@@ -26488,7 +26490,7 @@ const dQ = { class: "notification-container" }, fQ = { class: "notification-cont
       ], 64);
     };
   }
-}), YU = /* @__PURE__ */ uf(OU, [["__scopeId", "data-v-b9834a56"]]);
+}), YU = /* @__PURE__ */ uf(OU, [["__scopeId", "data-v-89491934"]]);
 export {
   YU as Summary,
   YU as default
