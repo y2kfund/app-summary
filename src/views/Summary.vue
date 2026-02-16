@@ -66,7 +66,7 @@ let tabulator: Tabulator | null = null
 // const columnApiRef = ref<ColumnApi | null>(null)
 const showArchivedClients = ref(false)
 //const q = useNlvMarginQuery(10, props.userId)
-const q = useNlvMarginQuery(10, props.userId, asOfDate)
+const q = useNlvMarginQuery(50, props.userId, asOfDate)
 const settledCashQuery = useSettledCashQuery(100, props.userId, asOfDate)
 
 // State for graph visibility and selected account
