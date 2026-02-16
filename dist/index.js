@@ -24900,7 +24900,7 @@ const dQ = { class: "notification-container" }, fQ = { class: "notification-cont
     );
     const r = s, o = e, a = ee(null);
     let l = null;
-    const h = ee(!1), c = am(10, r.userId, i), u = lm(100, r.userId, i);
+    const h = ee(!1), c = am(50, r.userId, i), u = lm(100, r.userId, i);
     sr({});
     const d = ee(null), f = ee(null), g = sr({}), b = ee(null), w = sr({
       bansi: { isLoading: !1, isStarting: !1, isStopping: !1, online: !1 },
@@ -26490,7 +26490,7 @@ const dQ = { class: "notification-container" }, fQ = { class: "notification-cont
       ], 64);
     };
   }
-}), YU = /* @__PURE__ */ uf(OU, [["__scopeId", "data-v-89491934"]]);
+}), YU = /* @__PURE__ */ uf(OU, [["__scopeId", "data-v-92496642"]]);
 export {
   YU as Summary,
   YU as default
