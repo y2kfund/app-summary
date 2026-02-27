@@ -12,7 +12,7 @@ import { onMounted, onBeforeUnmount, computed, reactive, inject, ref, watch, nex
 import { useNlvMarginQuery, type nlvMargin } from '@y2kfund/core/nlvMargin'
 import { useSettledCashQuery, type SettledCash } from '@y2kfund/core/settledCash'
 import { useQuery, useQueryClient } from '@tanstack/vue-query'
-import { useSupabase } from '@y2kfund/core'
+import { useSupabase, usePositionsQuery, type Position } from '@y2kfund/core'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -68,6 +68,283 @@ const showArchivedClients = ref(false)
 //const q = useNlvMarginQuery(10, props.userId)
 const q = useNlvMarginQuery(50, props.userId, asOfDate)
 const settledCashQuery = useSettledCashQuery(100, props.userId, asOfDate)
+
+// Positions query for expandable rows
+const positionsQuery = usePositionsQuery('demo', props.userId, asOfDate)
+const expandedAccountId = ref<string | null>(null)
+
+function togglePositionsExpansion(accountId: string) {
+  if (expandedAccountId.value === accountId) {
+    expandedAccountId.value = null
+  } else {
+    expandedAccountId.value = accountId
+  }
+}
+
+const expandedAccountPositions = computed(() => {
+  if (!expandedAccountId.value || !positionsQuery.data.value) return []
+  return positionsQuery.data.value.filter(
+    (p: Position) => p.internal_account_id === expandedAccountId.value
+  )
+})
+
+const expandedAccountName = computed(() => {
+  if (!expandedAccountId.value) return ''
+  const item = filteredMetrics.value?.find(
+    m => String(m.nlv_internal_account_id) === expandedAccountId.value
+  )
+  return item?.legal_entity || 'Account'
+})
+
+function formatExpiryFromYyMmDd(code: string): string {
+  if (!code || code.length !== 6) return ''
+  return `20${code.substring(0,2)}-${code.substring(2,4)}-${code.substring(4,6)}`
+}
+
+function extractTagsFromSymbol(symbolText: string): string[] {
+  if (!symbolText) return []
+  const text = String(symbolText)
+  const symMatch = text.match(/^([A-Z]+)\b/)
+  const base = symMatch?.[1] ?? ''
+  const rightMatch = text.match(/\s([CP])\b/)
+  const right = rightMatch?.[1] ?? ''
+  const strikeMatch = text.match(/\s(\d+(?:\.\d+)?)\s+[CP]\b/)
+  const strike = strikeMatch?.[1] ?? ''
+  const codeMatch = text.match(/\b(\d{6})[CP]/)
+  const expiry = codeMatch ? formatExpiryFromYyMmDd(codeMatch[1]) : ''
+  return [base, expiry, strike, right].filter(Boolean)
+}
+
+function createSubTable(row: any, accountId: string) {
+  const rowEl = row.getElement()
+  
+  // Check if sub-table already exists — toggle off
+  const existing = rowEl.querySelector('.positions-subtable-holder')
+  if (existing) {
+    existing.remove()
+    expandedAccountId.value = null
+    return
+  }
+  
+  // Remove any other open sub-tables
+  document.querySelectorAll('.positions-subtable-holder').forEach(el => el.remove())
+  expandedAccountId.value = accountId
+  
+  // Get positions for this account
+  const positions = positionsQuery.data.value?.filter(
+    (p: Position) => p.internal_account_id === accountId
+  ) || []
+  
+  // Create holder and table elements (Tabulator native pattern)
+  const holderEl = document.createElement('div')
+  holderEl.className = 'positions-subtable-holder'
+  holderEl.style.boxSizing = 'border-box'
+  holderEl.style.padding = '10px 30px 10px 10px'
+  holderEl.style.borderTop = '1px solid #ddd'
+  holderEl.style.borderBottom = '2px solid #4f46e5'
+  holderEl.style.background = '#f8fafc'
+  
+  const tableEl = document.createElement('div')
+  tableEl.style.border = '1px solid #e5e7eb'
+  tableEl.style.borderRadius = '4px'
+  tableEl.style.overflow = 'hidden'
+  holderEl.appendChild(tableEl)
+  
+  // Append to the row element (Tabulator native way)
+  rowEl.appendChild(holderEl)
+  
+  // Create sub-Tabulator instance with PositionsV2-matching columns
+  new Tabulator(tableEl, {
+    layout: 'fitData',
+    data: positions,
+    placeholder: 'No positions for this account',
+    initialSort: [{ column: 'dte', dir: 'asc' }],
+    columns: [
+      // Financial Instrument group
+      { title: 'Financial Instrument', headerHozAlign: 'center', columns: [
+        { title: 'Name', field: 'symbol', width: 220, cssClass: 'col-group-start',
+          formatter: (cell: any) => {
+            const val = cell.getValue(); if (!val) return ''
+            const tags = extractTagsFromSymbol(val)
+            return tags.map((t: string) => `<span class="fi-tag">${t}</span>`).join('')
+          },
+          bottomCalc: () => 'Total',
+          bottomCalcFormatter: () => '<strong>Total</strong>'
+        },
+        { title: 'Entry Unit Price', field: 'avgPrice', hozAlign: 'right', width: 80,
+          titleFormatter: () => 'Entry<br>Unit<br>Price',
+          formatter: (cell: any) => { const v = cell.getValue(); if (v == null || !Number.isFinite(v)) return ''; return `<span style="color:#425466;">$${Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>` }
+        },
+        { title: 'Current<br>market<br>price', field: 'option_market_price', hozAlign: 'right', width: 95,
+          titleFormatter: () => 'Current<br>market<br>price',
+          formatter: (cell: any) => {
+            const data = cell.getRow().getData()
+            let v: number | null = null
+            if (data.asset_class === 'OPT') {
+              v = data.option_market_price ?? data.price ?? null
+            } else {
+              v = data.market_price ?? data.price ?? null
+            }
+            if (v == null) return '<span style="color:#aaa;">-</span>'
+            return `<span style="color:#425466;">$${Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>`
+          }
+        },
+        { title: 'Contract<br>Qty', field: 'contract_quantity', hozAlign: 'right', width: 90,
+          formatter: (cell: any) => { const v = cell.getValue(); return v != null ? `<span style="color:#425466;">${Number(v).toLocaleString()}</span>` : '' },
+          bottomCalc: (values: any[]) => values.reduce((s: number, v: any) => s + Math.abs(Number(v) || 0), 0),
+          bottomCalcFormatter: (cell: any) => { const v = cell.getValue(); return `<strong>${Number(v).toLocaleString()}</strong>` }
+        },
+        { title: 'Premium<br>Received', field: 'computed_cash_flow_on_entry', hozAlign: 'right', width: 100, cssClass: 'col-group-end',
+          formatter: (cell: any) => { const v = cell.getValue(); if (v == null) return ''; const color = v > 0 ? '#16a34a' : v < 0 ? '#dc2626' : '#374151'; return `<span style="color:${color}">${formatCurrency(v)}</span>` },
+          bottomCalc: 'sum',
+          bottomCalcFormatter: (cell: any) => { const v = cell.getValue(); const color = v > 0 ? '#16a34a' : v < 0 ? '#dc2626' : '#374151'; return `<strong style="color:${color}">${formatCurrency(v)}</strong>` }
+        },
+      ]},
+      // DTE
+      { title: 'DTE', field: 'dte', hozAlign: 'right', width: 75,
+        sorter: (a: any, b: any, aRow: any, bRow: any) => {
+          const getDte = (d: any) => {
+            if (d.asset_class !== 'OPT') return Infinity
+            const t = extractTagsFromSymbol(d.symbol)
+            if (!t[1]) return Infinity
+            const days = Math.ceil((new Date(t[1]).getTime() - Date.now()) / 86400000)
+            return days < 0 ? Infinity : days
+          }
+          return getDte(aRow.getData()) - getDte(bRow.getData())
+        },
+        formatter: (cell: any) => {
+          const data = cell.getRow().getData()
+          if (data.asset_class !== 'OPT') return '<span style="color:#aaa;font-style:italic;">N/A</span>'
+          const tags = extractTagsFromSymbol(data.symbol)
+          const expiryStr = tags[1]
+          if (!expiryStr) return '-'
+          const expiry = new Date(expiryStr); const now = new Date(); now.setHours(0,0,0,0); expiry.setHours(0,0,0,0)
+          const days = Math.ceil((expiry.getTime() - now.getTime()) / 86400000)
+          if (days < 0) return '<span style="color:#dc3545;font-weight:bold;">Expired</span>'
+          const style = days <= 7 ? 'color:#dc3545;font-weight:bold;' : days <= 30 ? 'color:#fd7e14;font-weight:bold;' : 'color:inherit;'
+          return `<span style="${style}">${days}d</span>`
+        }
+      },
+      // Delta
+      { title: 'Delta', field: 'delta', hozAlign: 'right', width: 75,
+        formatter: (cell: any) => {
+          const data = cell.getRow().getData()
+          if (data.asset_class !== 'OPT') return ''
+          const v = cell.getValue()
+          if (v == null) return '<span style="color:#aaa;">-</span>'
+          const d = parseFloat(v); if (isNaN(d)) return '-'
+          const abs = Math.abs(d)
+          const s = abs >= 0.7 ? 'color:#dc3545;font-weight:bold;' : abs >= 0.3 ? 'color:#fd7e14;' : 'color:#28a745;'
+          return `<span style="${s}">${d.toFixed(2)}</span>`
+        }
+      },
+      // P&L group
+      { title: 'P&L', headerHozAlign: 'center', columns: [
+        { title: 'Close<br>now', field: 'unrealized_pnl', hozAlign: 'right', width: 90, cssClass: 'col-group-start',
+          formatter: (cell: any) => { const v = cell.getValue(); if (v == null) return ''; const color = v > 0 ? '#16a34a' : v < 0 ? '#dc2626' : '#374151'; return `<span style="color:${color}">${formatCurrency(Math.round(v))}</span>` },
+          bottomCalc: 'sum',
+          bottomCalcFormatter: (cell: any) => { const v = Math.round(cell.getValue()); const color = v > 0 ? '#16a34a' : v < 0 ? '#dc2626' : '#374151'; return `<strong style="color:${color}">${formatCurrency(v)}</strong>` }
+        },
+        { title: 'Wait<br>till<br>expiry', field: 'be_price_pnl', hozAlign: 'right', width: 75,
+          formatter: (cell: any) => {
+            const data = cell.getRow().getData()
+            if (data.asset_class !== 'OPT') return '<span style="color:#aaa;font-style:italic;">N/A</span>'
+            const bePrice = data.computed_be_price != null ? parseFloat(data.computed_be_price) : NaN
+            const marketPrice = data.market_price != null ? parseFloat(data.market_price) : NaN
+            if (isNaN(bePrice) || isNaN(marketPrice)) return '<span style="color:#aaa;font-style:italic;">N/A</span>'
+            if (!data.symbol) return '<span style="color:#aaa;font-style:italic;">N/A</span>'
+            const contractQty = data.contract_quantity || data.qty || 0
+            if (contractQty === 0) return '<span style="color:#aaa;font-style:italic;">N/A</span>'
+            const tags = extractTagsFromSymbol(data.symbol)
+            const strikePrice = tags[2] ? parseFloat(tags[2]) : NaN
+            const optionType = tags[3]
+            if (isNaN(strikePrice)) return '<span style="color:#aaa;font-style:italic;">N/A</span>'
+            if (optionType !== 'P' && optionType !== 'C') return '<span style="color:#aaa;font-style:italic;">N/A</span>'
+            const qty = Math.abs(contractQty)
+            const mult = data.multiplier || 100
+            let v: number
+            if (optionType === 'P') {
+              const effectivePrice = Math.min(marketPrice, strikePrice)
+              v = contractQty < 0 ? (effectivePrice - bePrice) * qty * mult : (bePrice - effectivePrice) * qty * mult
+            } else {
+              const effectivePrice = Math.max(marketPrice, strikePrice)
+              v = contractQty < 0 ? (bePrice - effectivePrice) * qty * mult : (effectivePrice - bePrice) * qty * mult
+            }
+            const color = v > 0 ? '#16a34a' : v < 0 ? '#dc2626' : '#374151'
+            return `<span style="color:${color}">${formatCurrency(Math.round(v))}</span>`
+          },
+          bottomCalc: (_values: any[], data: any[]) => {
+            let total = 0
+            for (const d of data) {
+              if (d.asset_class !== 'OPT' || d.computed_be_price == null || d.market_price == null || !d.symbol) continue
+              const bePrice = parseFloat(d.computed_be_price)
+              const marketPrice = parseFloat(d.market_price)
+              if (isNaN(bePrice) || isNaN(marketPrice)) continue
+              const contractQty = d.contract_quantity || d.qty || 0
+              if (contractQty === 0) continue
+              const tags = extractTagsFromSymbol(d.symbol)
+              const strikePrice = tags[2] ? parseFloat(tags[2]) : NaN
+              const optionType = tags[3]
+              if (isNaN(strikePrice) || (optionType !== 'P' && optionType !== 'C')) continue
+              const qty = Math.abs(contractQty)
+              const mult = d.multiplier || 100
+              if (optionType === 'P') {
+                const ep = Math.min(marketPrice, strikePrice)
+                total += contractQty < 0 ? (ep - bePrice) * qty * mult : (bePrice - ep) * qty * mult
+              } else {
+                const ep = Math.max(marketPrice, strikePrice)
+                total += contractQty < 0 ? (bePrice - ep) * qty * mult : (ep - bePrice) * qty * mult
+              }
+            }
+            return total
+          },
+          bottomCalcFormatter: (cell: any) => { const v = Math.round(cell.getValue()); const color = v > 0 ? '#16a34a' : v < 0 ? '#dc2626' : '#374151'; return `<strong style="color:${color}">${formatCurrency(v)}</strong>` }
+        },
+        { title: 'Unrealized<br>P&L %', field: 'unrealized_pnl_pct', hozAlign: 'right', width: 90, cssClass: 'col-group-end',
+          formatter: (cell: any) => {
+            const data = cell.getRow().getData()
+            const pnl = parseFloat(data.unrealized_pnl)
+            const entry = parseFloat(data.computed_cash_flow_on_entry)
+            if (isNaN(pnl) || isNaN(entry) || entry === 0) return '<span style="color:#aaa;font-style:italic;">N/A</span>'
+            const pct = (pnl / Math.abs(entry)) * 100
+            const fmt = `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%`
+            const color = pct > 0 ? '#16a34a' : pct < 0 ? '#dc2626' : '#374151'
+            return `<span style="color:${color}">${fmt}</span>`
+          }
+        },
+      ]},
+      // Underlying Instrument group
+      { title: 'Underlying Instrument', headerHozAlign: 'center', columns: [
+        { title: 'Break<br>even<br>price', field: 'computed_be_price', hozAlign: 'right', width: 90, cssClass: 'col-group-start',
+          formatter: (cell: any) => { const v = cell.getValue(); if (v == null) return '-'; const n = parseFloat(v); return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` }
+        },
+        { title: 'Current<br>market<br>price', field: 'market_price', hozAlign: 'right', width: 90,
+          formatter: (cell: any) => { const v = cell.getValue(); return v != null ? `$${Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '<span style="color:#aaa;">-</span>' }
+        },
+        { title: 'Entry<br>Unit<br>Price', field: 'ul_entry_price', hozAlign: 'right', width: 70, cssClass: 'col-group-end',
+          formatter: () => '<span style="color:#aaa;font-style:italic;">N/A</span>'
+        },
+      ]},
+      // Buying Power if Exercised
+      { title: 'Buying<br>Power<br>if<br>Exercised', field: 'computed_cash_flow_on_exercise', hozAlign: 'right', width: 100,
+        formatter: (cell: any) => { const v = cell.getValue(); if (v == null) return ''; const color = v > 0 ? '#16a34a' : v < 0 ? '#dc2626' : '#374151'; return `<span style="color:${color}">${formatCurrency(v)}</span>` },
+        bottomCalc: 'sum',
+        bottomCalcFormatter: (cell: any) => { const v = cell.getValue(); const color = v > 0 ? '#16a34a' : v < 0 ? '#dc2626' : '#374151'; return `<strong style="color:${color}">${formatCurrency(v)}</strong>` }
+      },
+      // Premium / Exercised %
+      { title: 'Premium<br>/<br>Exercised %', field: 'entry_exercise_cash_flow_pct', hozAlign: 'right', width: 90,
+        formatter: (cell: any) => {
+          const data = cell.getRow().getData()
+          if (data.asset_class === 'OPT' && data.computed_cash_flow_on_entry != null && data.computed_cash_flow_on_exercise != null && data.computed_cash_flow_on_exercise !== 0) {
+            const pct = (data.computed_cash_flow_on_entry / data.computed_cash_flow_on_exercise) * 100
+            return `<span>${Math.abs(parseFloat(pct.toFixed(2)))}%</span>`
+          }
+          return '<span style="color:#aaa;font-style:italic;">N/A</span>'
+        }
+      },
+    ]
+  })
+}
 
 // State for graph visibility and selected account
 const graphVisibility: { [key: number]: { nlv: boolean; mm: boolean } } = reactive({});
@@ -607,6 +884,45 @@ function initializeTabulator() {
 
   const columns = [
     {
+      title: '',
+      field: '_expand',
+      frozen: true,
+      headerSort: false,
+      width: 36,
+      hozAlign: 'center',
+      cssClass: 'expand-col',
+      formatter: (cell: any) => {
+        const data = cell.getRow().getData()
+        if (data.isTotal) return ''
+        const accountId = String(data.nlv_internal_account_id)
+        const isExpanded = expandedAccountId.value === accountId
+        return `<span class="expand-icon" style="cursor:pointer;font-size:16px;">${isExpanded ? '−' : '+'}</span>`
+      },
+      cellClick: (e: any, cell: any) => {
+        const data = cell.getRow().getData()
+        if (data.isTotal) return
+        const accountId = String(data.nlv_internal_account_id)
+        
+        // Use Tabulator native pattern: row.getElement().appendChild()
+        createSubTable(cell.getRow(), accountId)
+        
+        // Re-render all expand icons
+        if (tabulator) {
+          tabulator.getRows().forEach((row: any) => {
+            const expandCell = row.getCell('_expand')
+            if (expandCell) {
+              const rowData = row.getData()
+              if (!rowData.isTotal) {
+                const rid = String(rowData.nlv_internal_account_id)
+                const isExp = expandedAccountId.value === rid
+                expandCell.getElement().innerHTML = `<span class="expand-icon" style="cursor:pointer;font-size:16px;">${isExp ? '−' : '+'}</span>`
+              }
+            }
+          })
+        }
+      }
+    },
+    {
       title: getSummaryColLabel('account'),
       field: 'account',
       frozen: true,
@@ -837,7 +1153,7 @@ function initializeTabulator() {
       bottomCalc: 'sum',
       bottomCalcFormatter: (cell: any) => formatCurrency(cell.getValue())
     }
-  ].filter(col => summaryVisibleCols.value.includes(col.field as SummaryColumnField))
+  ].filter(col => col.field === '_expand' || summaryVisibleCols.value.includes(col.field as SummaryColumnField))
 
   try {
     tabulator = new Tabulator(tableDiv.value, {
@@ -2305,6 +2621,7 @@ watch(filteredMetrics, (newVal) => {
           </div>
         </div>
 
+
         <!-- Updated Context Menu with proper styling -->
         <div 
           v-if="contextMenu.visible" 
@@ -2774,6 +3091,123 @@ button.edit-btn {
     cursor: pointer;
     width: auto;
     padding: 0 3px;
+}
+
+/* Inline Positions Expansion (nested inside Tabulator rows via DOM injection) */
+.positions-inline-row {
+  border-bottom: 2px solid #4f46e5 !important;
+}
+
+.positions-inline-wrapper {
+  max-height: 350px;
+  overflow-y: auto;
+}
+
+.positions-inline-header {
+  padding: 6px 8px;
+  font-size: 0.8rem;
+  color: #4f46e5;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.positions-inline-loading,
+.positions-inline-empty {
+  padding: 12px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.8rem;
+}
+
+.positions-inline-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+}
+
+.positions-inline-table thead th {
+  position: sticky;
+  top: 0;
+  background: #eef2ff;
+  padding: 4px 8px;
+  text-align: left;
+  font-weight: 600;
+  color: #374151;
+  border-bottom: 1px solid #d1d5db;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.positions-inline-table tbody td {
+  padding: 3px 8px;
+  border-bottom: 1px solid #f3f4f6;
+  color: #374151;
+}
+
+.positions-inline-table tbody tr:hover {
+  background: #eef2ff;
+}
+
+.positions-inline-table .pos-symbol {
+  font-weight: 500;
+  font-family: monospace;
+  font-size: 0.75rem;
+}
+
+.positions-inline-table .negative {
+  color: #dc2626;
+}
+
+.positions-inline-table .positive {
+  color: #16a34a;
+}
+
+/* Column group boundary separators for sub-table */
+.positions-subtable-holder .tabulator .tabulator-cell.col-group-start,
+.positions-subtable-holder .tabulator .tabulator-col.col-group-start {
+  border-left: 2px solid #4a90d9 !important;
+}
+.positions-subtable-holder .tabulator .tabulator-cell.col-group-end,
+.positions-subtable-holder .tabulator .tabulator-col.col-group-end {
+  border-right: 2px solid #4a90d9 !important;
+}
+
+/* Sub-table header alignment: left + bottom for leaf columns only */
+.positions-subtable-holder .tabulator .tabulator-col:not(.tabulator-col-group) .tabulator-col-content {
+  padding: 4px 6px;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+.positions-subtable-holder .tabulator .tabulator-col:not(.tabulator-col-group) .tabulator-col-title {
+  text-align: left !important;
+  white-space: normal !important;
+}
+.positions-subtable-holder .tabulator .tabulator-col-group > .tabulator-col-content > .tabulator-col-title {
+  text-align: center !important;
+}
+
+.positions-subtable-holder .fi-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border: 1px solid #dbe2ea;
+  border-radius: 999px;
+  background: #f5f7fa;
+  color: #425466;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition: all .2s ease;
+  margin-right: 4px;
+}
+
+.expand-icon {
+  user-select: none;
+  font-weight: 700;
+  color: #4f46e5;
 }
 </style>
 
