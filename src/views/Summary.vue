@@ -123,6 +123,8 @@ function createSubTable(row: any, accountId: string) {
   if (existing) {
     existing.remove()
     expandedAccountId.value = null
+    // Notify dashboard to shrink the grid widget after sub-table DOM is removed
+    nextTick(() => eventBus?.emit('summary:subtable-collapsed'))
     return
   }
   
