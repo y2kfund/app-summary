@@ -386,7 +386,10 @@ const containerStates = reactive<Record<string, ContainerState>>({
   'vk': { isLoading: false, isStarting: false, isStopping: false, online: false },
   'jkmdm': { isLoading: false, isStarting: false, isStopping: false, online: false },
   'ristc': { isLoading: false, isStarting: false, isStopping: false, online: false },
-  'internext': { isLoading: false, isStarting: false, isStopping: false, online: false }
+  'internext': { isLoading: false, isStarting: false, isStopping: false, online: false },
+  'vk.roth.ira': { isLoading: false, isStarting: false, isStopping: false, online: false },
+  'vk.traditional.ira': { isLoading: false, isStarting: false, isStopping: false, online: false },
+  'vk.sep.ira': { isLoading: false, isStarting: false, isStopping: false, online: false }
 })
 
 // Notifications
@@ -1832,7 +1835,10 @@ function getContainerNameFromAccountId(clientNumber: number): string {
     7: 'vk',
     8: 'jkmdm',
     11: 'ristc',
-    12: 'internext'
+    12: 'internext',
+    13: 'vk.roth.ira',
+    14: 'vk.traditional.ira',
+    15: 'vk.sep.ira'
   }
   return containerMap[clientNumber] || ''
 }
